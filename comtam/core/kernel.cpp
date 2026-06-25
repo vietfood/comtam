@@ -29,9 +29,9 @@ KernelLibrary::KernelLibrary(MTL::Device* device, fs::path kernel_dir)
     }
 
     NS::Error* error = nullptr;
-    auto ns_source = NS::TransferPtr(NS::String::string(source.c_str(), NS::UTF8StringEncoding));
+    auto ns_source = NS::String::string(source.c_str(), NS::UTF8StringEncoding);
 
-    library_ = NS::TransferPtr(device->newLibrary(ns_source.get(), nullptr, &error));
+    library_ = NS::TransferPtr(device->newLibrary(ns_source, nullptr, &error));
 
     if (!library_) {
         throw std::runtime_error("[ERROR] Failed to compile Metal kernels: " + comtam::utils::ns_error_message(error));
@@ -40,14 +40,20 @@ KernelLibrary::KernelLibrary(MTL::Device* device, fs::path kernel_dir)
 
 // We only compile source only when we need it
 // The name here is the "function" name in kernel source
-MTL::ComputePipelineState* KernelLibrary::get(const std::string& name) {
+MTL::ComputePipelineState* KernelLibrary::get(const Op& op) {
+
+    if (auto it = op_to_kernel_name.find(op); it == op_to_kernel_name.end()) {
+        throw std::runtime_error("[ERROR] Unsupported operation");
+    }
+
+    auto& name = op_to_kernel_name[op];
     if (auto it = pipeline_cache_.find(name); it != pipeline_cache_.end()) {
         return it->second.get();
     }
 
-    auto ns_name = NS::TransferPtr(NS::String::string(name.c_str(), NS::UTF8StringEncoding));
+    auto ns_name = NS::String::string(name.c_str(), NS::UTF8StringEncoding);
 
-    auto function = NS::TransferPtr(library_->newFunction(ns_name.get()));
+    auto function = NS::TransferPtr(library_->newFunction(ns_name));
     if (!function) {
         throw std::runtime_error("[ERROR] Missing Metal kernel: " + name);
     }

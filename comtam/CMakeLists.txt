@@ -1,32 +1,28 @@
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_executable(comtam
+add_library(comtam_lib STATIC
   core/context.cpp
   core/kernel.cpp
   core/storage.cpp
   core/device.cpp
-  main.cpp
+  tensor.cpp
 )
 
-target_compile_definitions(comtam
-  PRIVATE
+target_compile_definitions(comtam_lib
+  PUBLIC
     COMTAM_KERNEL_DIR="${PROJECT_BINARY_DIR}/kernels"
 )
 
-target_include_directories(comtam
+target_include_directories(comtam_lib
   PUBLIC
     ${PROJECT_SOURCE_DIR}
 )
 
-target_compile_features(comtam PUBLIC cxx_std_20)
+target_compile_features(comtam_lib PUBLIC cxx_std_20)
 
-target_link_libraries(comtam
-  PRIVATE
+target_link_libraries(comtam_lib
+  PUBLIC
     metal_cpp
-)
-
-set_target_properties(comtam PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin
 )
 
 file(GLOB COMTAM_METAL_KERNELS CONFIGURE_DEPENDS
@@ -34,7 +30,7 @@ file(GLOB COMTAM_METAL_KERNELS CONFIGURE_DEPENDS
 )
 
 if(COMTAM_METAL_KERNELS)
-  target_sources(comtam PRIVATE ${COMTAM_METAL_KERNELS})
+  target_sources(comtam_lib PRIVATE ${COMTAM_METAL_KERNELS})
   set_source_files_properties(${COMTAM_METAL_KERNELS} PROPERTIES
     HEADER_FILE_ONLY TRUE
   )
@@ -47,7 +43,7 @@ if(COMTAM_METAL_KERNELS)
     VERBATIM
   )
 
-  add_dependencies(comtam comtam_kernel_sources)
+  add_dependencies(comtam_lib comtam_kernel_sources)
 endif()
 
 if(COMTAM_BUILD_METALLIB AND COMTAM_METAL_KERNELS)
@@ -83,5 +79,5 @@ if(COMTAM_BUILD_METALLIB AND COMTAM_METAL_KERNELS)
     DEPENDS ${COMTAM_METALLIB}
   )
 
-  add_dependencies(comtam comtam_kernels)
+  add_dependencies(comtam_lib comtam_kernels)
 endif()
