@@ -1,0 +1,9 @@
+[submodule "vendor/metal/metal-cpp"]
+	path = vendor/metal/metal-cpp
+	url = https://github.com/apple/metal-cpp
+[submodule "refs/magnetron"]
+	path = refs/magnetron
+	url = https://github.com/MarioSieg/magnetron.git
+[submodule "refs/banhxeo"]
+	path = refs/banhxeo
+	url = https://github.com/vietfood/banhxeo.git
