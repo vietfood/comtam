@@ -1,17 +1,18 @@
-# comtam Self-Study Course
+# comtam Course
 
-This course is for building `comtam`: a tiny eager-mode deep learning framework
-in C++20 for Apple devices.
+This course is a self-guided path for building `comtam`, a tiny eager-mode deep
+learning framework in C++20 for Apple devices, with Metal as the only runtime
+dependency.
 
-`refs/banhxeo` is only a reference. It is a different framework and a different
-course: compiler-first, lazy, Triton-based, and Python-facing. `comtam` should
-stay runtime-first: eager tensors, explicit Metal execution, dynamic autograd,
-and a small enough codebase that the whole path from `Tensor` to kernel launch
-can fit in your head.
+The point is not to copy PyTorch or Magnetron. The point is to rebuild enough of
+their ideas that you understand why those ideas exist, and to feel the cost of
+each abstraction before you adopt it.
 
 ## Course Thesis
 
-The shortest honest path is:
+comtam stays runtime-first and eager during this course.
+
+That means the main path is:
 
 ```text
 Metal context
@@ -25,72 +26,123 @@ Metal context
   -> hardening only after correctness
 ```
 
-The goal is not to compete with PyTorch, MLX, or Magnetron. The goal is to write
-one tiny framework where every abstraction earns its place.
+A tensor op runs now. There is no lazy graph, no scheduler, and no fusion. Each
+op validates, allocates a result, optionally records autograd metadata, submits
+one Metal command, and returns. This is the opposite of a compiler-first design,
+and that is on purpose: you learn runtime ownership, storage, dispatch, and
+backend boundaries before you learn graph optimization.
 
-## Constraints
+Lazy runtimes and compilers (banhxeo, tinygrad) are still useful, but as
+contrast. They teach scheduling and codegen. They should not pull this course
+toward graph internals until the eager path is correct and trainable.
 
-- C++20.
-- Metal via `metal-cpp` is the only external dependency.
-- Start with `float32` only.
-- Start with one Apple GPU device.
-- Start with shared Metal buffers.
-- Prefer direct, boring code over reusable-looking machinery.
-- No ATen wrappers, no Python binding layer, no lazy graph, no multi-backend
-  registry, no custom allocator until profiling proves it matters.
+## Non-Goals During The Course
 
-## Reference Roles
+These stay out until a failing test or a measurement forces them in. The
+reasoning lives in [`../AVOID.md`](../AVOID.md).
 
-- `refs/magnetron`: architectural reference for tensor metadata, view ownership,
-  operator dispatch, and dynamic autograd.
-- `refs/legrad`: anti-pattern reference. It grew framework-shaped abstractions
-  before a small end-to-end training loop was stable.
-- `refs/banhxeo`: contrast reference. Useful for views and tensor semantics, but
-  its lazy compiler path is not the architecture of `comtam`.
+- Python bindings.
+- Multiple backends or a backend registry.
+- Many dtypes (float32 first).
+- Lazy graphs, scheduling, fusion.
+- Allocator caches.
+- Serialization, image/audio IO.
+- Profiling counters before correctness.
+- Logging or macro infrastructure before it is earned.
 
 ## How To Use This Course
 
-1. Do the modules in order.
-2. Do not read ahead as implementation permission.
-3. Each module has a completion gate.
-4. Do not start module N+1 until module N's gate is met.
-5. When stuck, write the smallest repro, not a broad redesign.
+1. Read the assignment.
+2. Try it yourself for 30-60 minutes.
+3. Write down what confused you.
+4. Check hints only after you have a concrete question.
+5. Implement the smallest working version.
+6. Add a test or a trace note.
+7. Compare with Magnetron only after your own attempt.
+
+Difficulty ratings:
+
+- ⭐ Straightforward
+- ⭐⭐ Requires careful thinking
+- ⭐⭐⭐ Challenging, multiple approaches possible
 
 ## Recommended Order
 
-1. [`MODULE_0.md`](MODULE_0.md) - scope and repository skeleton
-2. [`MODULE_1.md`](MODULE_1.md) - Metal ownership and storage
-3. [`MODULE_2.md`](MODULE_2.md) - tensor metadata, shapes, strides, and views
-4. [`MODULE_3.md`](MODULE_3.md) - eager operator dispatch
-5. [`MODULE_4.md`](MODULE_4.md) - broadcasting and reductions
-6. [`MODULE_5.md`](MODULE_5.md) - matmul and layout
+Follow this order even if a later module looks shinier.
+
+1. [`MODULE_0.md`](MODULE_0.md) - understand the current codebase and Metal context
+2. [`MODULE_1.md`](MODULE_1.md) - storage and tensor metadata ownership
+3. [`MODULE_2.md`](MODULE_2.md) - master views, strides, offsets, and indexing
+4. [`MODULE_3.md`](MODULE_3.md) - eager operator dispatch to a Metal kernel
+5. [`MODULE_4.md`](MODULE_4.md) - build forward correctness against a CPU oracle
+6. [`MODULE_5.md`](MODULE_5.md) - broadcasting, reductions, and matmul
 7. [`MODULE_6.md`](MODULE_6.md) - reverse-mode autograd
-8. [`MODULE_7.md`](MODULE_7.md) - modules, parameters, losses, and optimizers
-9. [`MODULE_8.md`](MODULE_8.md) - hardening without bloat
-10. [`PROJECTS.md`](PROJECTS.md) - end-to-end proofs
+8. [`MODULE_7.md`](MODULE_7.md) - nn modules, parameters, and SGD
+9. [`MODULE_8.md`](MODULE_8.md) - small end-to-end training examples
+10. [`MODULE_9.md`](MODULE_9.md) - hardening after correctness
+11. [`PROJECTS.md`](PROJECTS.md) - choose an end-to-end project
+
+Why this order:
+
+- Module 0 forces an honest map of what already exists before you build on it.
+- Module 1 settles ownership early because a confused owner poisons every later
+  lifetime question.
+- Module 2 comes before dispatch because wrong views produce wrong kernels that
+  look like correct code.
+- Module 3 makes one op run end to end before you generalize it.
+- Module 4 checks forward semantics before backward rules enter the picture.
+- Module 5 adds the shape-changing ops that autograd will depend on.
+- Module 6 builds autograd after forward behavior has a reference.
+- Modules 7 and 8 prove the whole stack can actually train.
+- Module 9 is last because no optimization is allowed before a failing
+  performance measurement.
+
+Reference material:
+
+- [`APPENDIX.md`](APPENDIX.md) - Magnetron code map, metal-cpp tips, checklists
+- [`BUG_LEDGER.md`](BUG_LEDGER.md) - concrete bugs discovered while running the course
 
 ## Module Map
 
-| Module | Topic | Completion Gate |
+| Module | Topic | Main Question |
 | --- | --- | --- |
-| [`MODULE_0.md`](MODULE_0.md) | Scope and skeleton | CMake project creates a context smoke test |
-| [`MODULE_1.md`](MODULE_1.md) | Metal ownership | Host-device roundtrip works leak-free |
-| [`MODULE_2.md`](MODULE_2.md) | Views and strides | Logical indices map to expected storage offsets |
-| [`MODULE_3.md`](MODULE_3.md) | Op dispatch | Elementwise ops share one dispatch path |
-| [`MODULE_4.md`](MODULE_4.md) | Broadcast/reduce | Broadcast, sum, and mean match oracles |
-| [`MODULE_5.md`](MODULE_5.md) | Matmul | `x @ w + b` matches an oracle |
-| [`MODULE_6.md`](MODULE_6.md) | Autograd | Gradient checks pass for core ops |
-| [`MODULE_7.md`](MODULE_7.md) | NN/optim | XOR or linear regression trains |
-| [`MODULE_8.md`](MODULE_8.md) | Hardening | Debug trace, timing, and tests stay small |
+| [`MODULE_0.md`](MODULE_0.md) | Current codebase | What happens when a tensor moves host -> GPU -> host? |
+| [`MODULE_1.md`](MODULE_1.md) | Storage and metadata | Who owns GPU memory and when is it freed? |
+| [`MODULE_2.md`](MODULE_2.md) | Views and strides | How does logical indexing map to storage? |
+| [`MODULE_3.md`](MODULE_3.md) | Eager dispatch | What happens from `add(a, b)` to a launched kernel? |
+| [`MODULE_4.md`](MODULE_4.md) | Forward correctness | Does forward match a CPU reference? |
+| [`MODULE_5.md`](MODULE_5.md) | Broadcast/reduce/matmul | How do shape-changing ops dispatch kernels? |
+| [`MODULE_6.md`](MODULE_6.md) | Autograd | Do backward rules compose correctly? |
+| [`MODULE_7.md`](MODULE_7.md) | nn and SGD | How do parameters, modules, and optimizers fit eager autograd? |
+| [`MODULE_8.md`](MODULE_8.md) | Training | Can comtam learn a real task end to end? |
+| [`MODULE_9.md`](MODULE_9.md) | Hardening | Which optimizations are justified by measurement? |
+
+## Module Gates
+
+This course is graded by gates, not by demos. A printed array that looks
+plausible is not a pass.
+
+- Do not start module N+1 until module N's gate is met.
+- Every new op needs a correctness test against a CPU oracle.
+- Every autograd rule needs a gradient test.
+- Every Metal object needs one obvious owner.
+- No hidden global framework state.
+- No optimization before a failing performance measurement.
+
+When you grade yourself, separate three claims explicitly:
+
+```text
+compiled        -> the build succeeded
+smoke ran       -> the executable produced output without crashing
+gate passed     -> the module's exit criteria are met with tests
+```
 
 ## Ground Rules
 
-- One behavior change per patch.
-- Every new op gets a correctness test.
-- Every autograd rule gets a gradient test.
-- Every Metal object has one obvious owner.
-- No hidden global framework state.
-- No optimization before a failing performance measurement.
-- If an abstraction cannot be explained with a two-op example, it is probably
-  too early.
-
+- Keep patches small.
+- Do not mix refactors with behavior changes.
+- Every functionality change needs a test or a documented trace.
+- Prefer one clear implementation over a clever general one.
+- Every Metal object has exactly one owner. If you cannot name the owner, stop.
+- If you cannot explain what a kernel launch does, pause and trace it.
+- Treat printed arrays as debugging, not as tests.
