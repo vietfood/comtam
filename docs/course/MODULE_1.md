@@ -1,23 +1,18 @@
-## Module 1: Storage And Tensor Metadata
+## Module 1: Storage Invariants
 
-Settle ownership before you settle behavior.
+Settle storage before views.
 
-In an eager Metal framework, the first thing that will hurt you is not wrong math.
-It is unclear lifetime: a buffer freed while a command still references it, two
-tensors that think they own the same memory, or a copy that should have been a
-share. This module makes ownership boring and explicit so the rest of the course
-can move fast.
+In an eager Metal framework, the first thing that will hurt you is not wrong
+math. It is unclear lifetime and unclear sizing: a buffer freed while a command
+still references it, two tensors that accidentally copy when they should share,
+or a byte count that silently stops matching the tensor's dtype.
 
-## Why This Module Exists
+This module is intentionally short. You already know what a tensor is. The goal
+is to prove the invariants that Module 2 views will depend on.
 
-Storage is the boundary between C++ lifetime and GPU memory.
+## Core Rule
 
-Every later module assumes that a `Tensor` can be copied, sliced, and passed into
-a kernel without anyone guessing who frees the underlying `MTL::Buffer`. Views,
-dispatch, autograd, and training all build on top of that guarantee.
-
-The main design decision in this module is to keep one rule from
-[`../ARCHITECTURE.md`](../ARCHITECTURE.md):
+Keep this rule from [`../ARCHITECTURE.md`](../ARCHITECTURE.md):
 
 ```text
 one Storage owns one buffer
@@ -25,30 +20,26 @@ tensors may share storage
 views do not allocate
 ```
 
-That is deliberately smaller than ATen's storage system. See
-[`../AVOID.md`](../AVOID.md) for why custom deleters and context pointers are
-postponed.
+That is deliberately smaller than ATen's storage system. Do not add custom
+deleters, backend registries, allocator caches, or dtype-aware storage unless a
+failing test forces the design to grow. See [`../AVOID.md`](../AVOID.md).
 
 ## Mental Model
 
-Separate the three layers and never let them blur:
+Keep the three layers separate:
 
 ```text
 MTL::Buffer        raw GPU memory, reference counted by metal-cpp
 Storage            one C++ owner of one MTL::Buffer + size in bytes
-Tensor             DType + View + a shared_ptr<Storage>
+Tensor             DType + View + shared_ptr<Storage>
 ```
 
-Why three layers and not two:
+- `MTL::Buffer` is an Objective-C object managed through `NS::SharedPtr`.
+- `Storage` gives the buffer one obvious C++ owner and records byte size.
+- `Tensor` is an interpretation of storage. Multiple tensors may share the same
+  `Storage`.
 
-- `MTL::Buffer` is an Objective-C object. Its lifetime follows Cocoa rules and is
-  managed by `NS::SharedPtr`.
-- `Storage` gives that buffer a single, obvious C++ owner and a byte size, so the
-  rest of comtam never touches metal-cpp retain/release directly.
-- `Tensor` is just an interpretation. Many tensors can point at one `Storage`
-  through `std::shared_ptr`.
-
-The current code already encodes this:
+The current code should keep matching this shape:
 
 ```text
 comtam/core/storage.h   Storage: size_ + NS::SharedPtr<MTL::Buffer>, move-only
@@ -58,147 +49,103 @@ comtam/tensor.h         Tensor: dtype_, View view_, shared_ptr<Storage> storage_
 ## Suspicious Assumptions To Test
 
 Do not treat this list as known bugs. Treat it as assumptions the code must
-prove. Write a small probe for each before changing anything.
+prove:
 
-1. Is `Storage` really move-only, and does moving it leave the source safe to
-   destroy? (See the move constructor and deleted copy in `storage.h:16`.)
-2. When two tensors share a `Storage`, does the buffer survive until the last
+1. Does `Device::copy` reject byte-count mismatches before `memcpy`?
+2. Does byte/element conversion have one home, or is it spread across call sites?
+3. Can two tensors share one `Storage` and keep the buffer alive until the last
    tensor dies?
-3. Does `Device::copy` validate that byte counts match before `memcpy`?
-   (See `device.h:36` and `device.h:45`.)
-4. Does `Storage` know its element count, or only its byte size? Who converts
-   between them, and using which `DType`?
-5. Is there any path where a `Tensor` holds a null `storage_`? What is supposed
-   to happen then? (See the null checks in `tensor.cpp:32` and `tensor.cpp:44`.)
+4. If one tensor writes through shared storage, does the other tensor observe the
+   change?
+5. Is `Storage::print` honest about being float32-only debug output?
 
-When a probe surprises you, add it to [`BUG_LEDGER.md`](BUG_LEDGER.md).
+When a probe surprises you, record it in your solution note under the relevant
+assignment feedback.
 
-## Learning Goals
+## Assignment 1.1: Make Byte Sizing Explicit ⭐⭐
 
-By the end of this module you should be able to explain:
+**Observation:** `Storage` stores `size_` in bytes. `Tensor` stores element count
+through `View::numel()`. The conversion currently depends on `dtype_size_map`.
 
-1. The difference between a buffer, a storage, and a tensor.
-2. Why `Storage` is move-only and what that prevents.
-3. Why tensors share `Storage` through `std::shared_ptr` instead of owning it.
-4. How a byte count becomes an element count and back, and where `DType` enters.
-5. What "views do not allocate" means in terms of `Storage` lifetime.
-6. Why a single obvious owner per Metal object matters more than it looks.
-
-## Assignment 1.1: Trace Storage Lifetime ⭐
-
-**Task:** Trace the lifetime of one `MTL::Buffer` from allocation to release.
-
-```cpp
-Tensor t(A.data(), {N}, device);
-```
-
-**Questions to answer:**
-
-1. `Device::allocate(bytes)` returns a `Storage` by value. How does the move
-   constructor in `storage.h:16` avoid a double free of the buffer?
-2. The constructor wraps the storage in `std::make_shared<Storage>(...)`
-   (`tensor.cpp:17`). After this line, how many owners does the `Storage` have?
-   How many owners does the `MTL::Buffer` have?
-3. When `t` goes out of scope, what is the exact destruction order:
-   `Tensor` -> `shared_ptr` -> `Storage` -> `NS::SharedPtr` -> `MTL::Buffer`?
-
-**Deliverable:** An ownership diagram annotated with where each reference count
-increments and decrements.
-
-**Why this assignment:** Lifetime bugs are silent until a kernel reads freed
-memory. Tracing the happy path first makes the unhappy paths visible later.
-
-## Assignment 1.2: Make Element Count Explicit ⭐⭐
-
-**Observation:** `Storage` stores `size_` in bytes. `Tensor` stores element
-count through `View::numel()`. The conversion uses `dtype_size_map`
-(`dtype.h:11`).
-
-**Task:** Decide and document where byte/element conversion lives, then make it
-consistent.
+**Task:** Decide where byte/element conversion lives, then make the code and
+tests enforce that decision.
 
 Questions:
 
 1. Should `Storage` know its `DType`, or stay a dumb byte buffer?
-2. Today `Device::copy` checks `count * sizeof(T) == storage.size()`
-   (`device.h:38`). Is `sizeof(T)` from the call site guaranteed to match the
-   tensor's `DType`? Where could they diverge?
-3. If you add a second dtype later, which of these checks silently breaks?
+2. Is `sizeof(T)` in `Device::copy<T>` guaranteed to match the tensor's `DType`?
+3. If a second dtype is added later, which checks would silently become wrong?
 
-**Recommended first choice:** Keep `Storage` a dumb byte buffer. Put all
-dtype-aware sizing in `Tensor` and `Device::copy`. Do not give `Storage` a
-`DType` until a second dtype forces it. This keeps the storage layer boring, in
-the spirit of [`../AVOID.md`](../AVOID.md).
+**Recommended first choice:** Keep `Storage` a dumb byte buffer. Put dtype-aware
+sizing at the tensor/copy boundary. Do not give `Storage` a `DType` until a
+second dtype forces it.
 
-**Test to write:** A round-trip test that constructs a tensor, reads it back, and
-asserts exact float equality, plus a negative test that a mismatched byte count
-throws.
+**Tests to write:**
 
-## Assignment 1.3: Prove Sharing Works ⭐⭐
+- A float32 round-trip test that asserts exact equality.
+- A negative test that a mismatched byte count throws.
 
-**Task:** Demonstrate that two tensors can share one `Storage` safely.
+## Assignment 1.2: Prove Sharing Works ⭐⭐
 
-You do not have view ops yet (that is Module 2), so simulate sharing directly:
-construct two `Tensor` headers that hold the same `std::shared_ptr<Storage>`.
+**Task:** Demonstrate that two tensor headers can share one `Storage` safely.
+
+You do not need full view ops yet. Simulate sharing directly by constructing two
+tensor headers over the same `std::shared_ptr<Storage>`, or add the smallest test
+helper needed to do that without weakening the public API.
 
 Questions:
 
-1. If tensor `a` is destroyed, can tensor `b` still read its data?
+1. If tensor `a` is destroyed, can tensor `b` still read the data?
 2. If you write through `a`'s storage, does `b` see the change? Should it?
-3. What invariant must hold for shared storage to be safe while a kernel is
-   in flight? (Hint: `Device::submit` currently calls `waitUntilCompleted`.)
+3. What lifetime invariant must hold while a kernel is in flight?
 
-**Deliverable:** A small test that builds two tensors over one storage, destroys
-one, and reads the other. Assert the survivor still returns correct data.
+Hint: `Device::submit` currently calls `waitUntilCompleted`, so the first
+version can stay synchronous.
 
-**Why this assignment:** Sharing is the whole point of `shared_ptr<Storage>`. If
-you cannot prove it is safe now, views in Module 2 will be built on a guess.
+**Test to write:** Build two tensors over one storage, destroy one, and assert
+the survivor still returns correct data.
 
-## Assignment 1.4: Storage Debug Print ⭐
+## Assignment 1.3: Keep `Storage::print` Small ⭐
 
-**Task:** `Storage::print(const std::string& label)` is declared in
-`storage.h:38`. Implement or review it so it dumps buffer contents for debugging.
+**Task:** Implement or review `Storage::print(const std::string& label)`.
 
 Rules:
 
-- This is a debugging aid, not a test. Printing is never a correctness check.
+- It is a debugging aid, not a test.
 - It must not change buffer contents or storage mode.
-- Keep it small. Do not grow it into a logging framework
-  (see [`../AVOID.md`](../AVOID.md) item 8).
+- It may assume float32 for now, but that assumption must be obvious.
+- It must not grow into a logging framework.
 
-**Why this assignment:** A tiny, honest print helper saves hours in later
-modules, as long as you remember it proves nothing on its own.
+Printed arrays prove nothing. They are useful only when paired with tests that
+have oracles.
 
-## Assignment 1.5: Read Magnetron Storage Carefully ⭐⭐⭐
+## Optional Reading: Magnetron Storage
 
-Read Magnetron's tensor and storage ownership after your own attempt.
+Read Magnetron's storage and tensor ownership after your own tests pass, not as
+a blocker before Module 2.
 
-Questions to answer:
+Questions worth answering:
 
 1. How does Magnetron separate storage from tensor metadata?
 2. What does Magnetron's reference counting do that `shared_ptr<Storage>` does
    not?
-3. Which parts of Magnetron's ownership machinery are needed because it supports
-   more than one backend?
+3. Which parts exist mainly because Magnetron supports more than one backend?
 4. Which one idea would you copy into comtam now, and which would you postpone?
-
-**Deliverable:** A short note titled "What comtam should copy from Magnetron
-storage, and what it should postpone."
 
 ## Module 1 Checklist
 
-- [ ] 1.1 Trace one buffer's full lifetime with reference counts.
-- [ ] 1.2 Decide where byte/element conversion lives; add round-trip tests.
-- [ ] 1.3 Prove two tensors can share one storage safely.
-- [ ] 1.4 Implement or review `Storage::print` as a debug aid only.
-- [ ] 1.5 Read Magnetron storage and write a copy/postpone note.
+- [ ] 1.1 Byte/element conversion has one documented home.
+- [ ] 1.1 Round-trip and byte-mismatch tests pass.
+- [ ] 1.2 Shared storage lifetime is tested.
+- [ ] 1.2 Shared writes/readback behavior is understood and documented.
+- [ ] 1.3 `Storage::print` is implemented or reviewed as debug-only.
 
 ## Exit Criteria
 
 You are ready for Module 2 when:
 
-1. Every Metal object has exactly one obvious C++ owner you can name.
-2. You can explain why `Storage` is move-only and why `Tensor` shares it.
+1. Every Metal buffer has one obvious C++ owner you can name.
+2. `Storage` remains move-only and dtype-agnostic unless a test proves otherwise.
 3. Round-trip and sharing tests pass with exact float comparisons.
 4. Byte vs element conversion has one documented home.
-5. You have a written decision on whether `Storage` should ever know its dtype.
+5. Debug printing is clearly separated from correctness testing.

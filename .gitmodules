@@ -7,3 +7,6 @@
 [submodule "refs/banhxeo"]
 	path = refs/banhxeo
 	url = https://github.com/vietfood/banhxeo.git
+[submodule "vendor/Catch2"]
+	path = vendor/Catch2
+	url = https://github.com/catchorg/Catch2.git

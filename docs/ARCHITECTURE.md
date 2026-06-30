@@ -1,338 +1,318 @@
 # comtam Architecture
 
-This is the proposed architecture for `comtam`. It is intentionally temporary.
-The design should evolve as the framework earns new requirements.
+This document describes the architecture the code currently has. It should stay
+close to reality so it can guide rewrites and course decisions.
 
-The current target is a tiny eager-mode deep learning framework in C++20 with
-Metal as the only external runtime dependency.
+`comtam` is a tiny eager-mode deep learning framework in C++20 for Apple
+devices. The current implementation is Metal-only, float32-first, single-device,
+and synchronous.
 
-## Thesis
-
-`comtam` should borrow Magnetron's architectural discipline, not Magnetron's
-full scope.
-
-Magnetron's useful shape is:
-
-```text
-Context
-  -> Tensor and Storage
-  -> Device command dispatch
-  -> Autograd metadata
-  -> Modules and optimizers
-```
-
-`comtam` keeps that shape, but narrows it:
-
-```text
-one backend: Metal
-one dtype first: float32
-one device first: default Apple GPU
-eager execution first
-runtime clarity before performance
-```
-
-## Proposed Layers
-
-```text
-main.cpp
-  uses public comtam API
-
-comtam/core/
-  context
-  device
-  kernel
-  storage
-  tensor
-  op
-  autograd
-
-comtam/nn/
-  parameter
-  module
-  linear
-  loss
-  optim
-
-comtam/kernels/
-  vadd.metal
-  elementwise.metal
-  reduce.metal
-  matmul.metal
-```
-
-This layout is not sacred. It is a starting point.
-
-## Runtime Ownership
-
-The top-level owner is `Context`.
+## Current Shape
 
 ```text
 Context
   owns Device
   owns KernelLibrary
-  later owns Allocator
+
+Tensor
+  owns DType
+  owns View
+  shares Storage
+
+Storage
+  owns one MTL::Buffer
+  records byte size
+
+Tensor op
+  validates enough for the current module
+  allocates result storage
+  builds Command
+  Device submits Command to Metal
 ```
 
-There should be no global `MetalManager`.
+The important boundary is:
 
-Preferred use:
+```text
+Storage owns bytes.
+Tensor interprets bytes.
+Device moves bytes and launches kernels.
+KernelLibrary maps ops to Metal pipelines.
+```
+
+## Source Map
+
+```text
+main.cpp
+  small executable using the library
+
+comtam/
+  tensor.h/.cpp
+    Tensor metadata, host transfer, binary op entry points
+
+comtam/core/
+  context.h/.cpp
+    top-level runtime owner
+  device.h/.cpp
+    Metal device, queue, allocation, copies, command submission
+  storage.h/.cpp
+    move-only MTL::Buffer owner
+  view.h
+    shape, strides, reference strides, offset
+  dtype.h
+    DType and dtype dispatch
+  ops.h
+    Op enum, kernel-name lookup, binary Command
+  kernel.h/.cpp
+    Metal source compilation and pipeline cache
+
+comtam/kernels/
+  binary.metal
+    add, sub, mul, div kernels
+
+tests/
+  core/context.cpp
+  tensor/v0.cpp
+```
+
+## Build Flow
+
+The root `CMakeLists.txt` builds `vendor/metal`, `comtam_lib`, the `comtam`
+executable, and optionally tests.
+
+`comtam/CMakeLists.txt` copies `comtam/kernels/*.metal` into
+`build/kernels`, defines `COMTAM_KERNEL_DIR`, and can build
+`default.metallib`. The current `KernelLibrary` path compiles all copied Metal
+source files at runtime from `COMTAM_KERNEL_DIR`.
+
+This is good enough for now. Loading a precompiled `.metallib` can wait until
+runtime compilation becomes a real pain.
+
+## Runtime Ownership
+
+`core::Context` is the top-level owner:
 
 ```cpp
-comtam::Context ctx;
-auto& device = ctx.device();
-auto& kernels = ctx.kernels();
+core::Context context;
+auto &device = context.device();
+auto &kernels = context.kernels();
 ```
 
-This keeps tests, lifetime, and future experiments explicit.
+Internally, `Context` owns:
+
+```text
+std::unique_ptr<Device>
+std::unique_ptr<KernelLibrary>
+```
+
+There is no global Metal manager. Keep it that way unless tests force a
+different ownership model.
 
 ## Device
 
-`Device` is the Metal execution owner.
+`core::Device` owns:
 
-Initial responsibilities:
-
-- own `MTL::Device`
-- own `MTL::CommandQueue`
-- allocate `MTL::Buffer`
-- submit compute commands
-
-Not initial responsibilities:
-
-- allocator cache
-- profiling counters
-- multiple GPU selection
-- async graph execution
-
-Future direction:
-
-```cpp
-class Device {
- public:
-  Storage allocate(size_t bytes);
-  void submit(const Command& command);
-};
+```text
+NS::SharedPtr<MTL::Device>
+NS::SharedPtr<MTL::CommandQueue>
 ```
 
-## KernelLibrary
+It is responsible for:
 
-`KernelLibrary` manages Metal compute pipelines.
+- creating the default Metal device and command queue
+- allocating `Storage`
+- copying host arrays to storage
+- copying storage to host arrays
+- copying storage to storage
+- submitting a binary `Command`
 
-Initial responsibilities:
-
-- load `.metal` source files from `build/kernels`
-- compile a library at runtime, or load `default.metallib` when available
-- create and cache `MTL::ComputePipelineState` by kernel name
-
-Suggested shape:
-
-```cpp
-class KernelLibrary {
- public:
-  KernelLibrary(Device& device, std::filesystem::path kernel_dir);
-  MTL::ComputePipelineState* pipeline(std::string_view name);
-};
-```
-
-This is deliberately smaller than Magnetron's backend registry. `comtam` does
-not need backend modules, ABI cookies, or dynamic device discovery.
+`Device::submit` is synchronous. It commits a command buffer, waits with
+`waitUntilCompleted()`, and throws if the command buffer reports an error. This
+keeps lifetime simple while the framework is still proving correctness.
 
 ## Storage
 
-`Storage` owns raw device memory.
-
-Initial shape:
+`core::Storage` is a dumb byte buffer:
 
 ```text
-Storage
-  MTL::Buffer*
-  size_bytes
+size_t size_
+NS::SharedPtr<MTL::Buffer> buffer_
 ```
 
 Rules:
 
-- one `Storage` owns one buffer
-- tensors may share storage
-- views do not allocate
-- no borrowed storage in the first version
-- no custom deleter system in the first version
+- one `Storage` owns one `MTL::Buffer`
+- `Storage` is move-only
+- `Storage` does not know `DType`
+- tensors may share one `Storage` through `std::shared_ptr<Storage>`
+- debug printing is not correctness evidence
+
+This is intentionally smaller than ATen-style storage. No custom deleters,
+allocator cache, borrowed storage, or dtype-aware storage yet.
 
 ## Tensor
 
-`Tensor` is storage plus interpretation.
-
-Initial metadata:
+`Tensor` currently stores:
 
 ```text
-dtype
+core::DType dtype_
+core::View view_
+std::shared_ptr<core::Storage> storage_
+```
+
+Construction paths:
+
+- from host data plus shape
+- empty allocation from shape
+- header over existing shared storage
+
+Host transfer paths are dtype-dispatched:
+
+```text
+from_vector<T>
+to_vector<T>
+```
+
+The dispatch checks that the requested C++ type matches the tensor dtype. Today
+that means `DType::Float32 -> float`.
+
+Current limitation: `to_vector` assumes the tensor view can be read as a
+contiguous buffer. Module 2 is where view-aware readback earns its place.
+
+## View
+
+`core::View` currently records:
+
+```text
 shape
 strides
-storage_offset
-storage
-requires_grad
-grad_node
+ref_strides
+offset
 ```
 
-The core formula:
+It can report:
 
 ```text
-physical_offset = storage_offset + sum(index[d] * stride[d])
+dim()
+numel()
+is_contiguous()
 ```
 
-Views are tensor headers that share storage. This mirrors Magnetron's good
-design choice without copying its C reference-counted implementation.
+The indexing rule this is growing toward is:
+
+```text
+physical_offset = offset + sum(index[d] * stride[d])
+```
+
+The current binary kernels do not consume view metadata yet. That is the next
+architectural pressure point.
 
 ## Operator Dispatch
 
-Public tensor ops should be small.
+Binary ops currently live as static `Tensor` methods:
+
+```cpp
+Tensor Tensor::add(const Tensor &a, const Tensor &b, core::Device &device,
+                   core::KernelLibrary &kernels);
+```
+
+The current flow is:
 
 ```text
-add(a, b)
-  validate
-  broadcast if needed
-  allocate result
-  record autograd metadata if needed
-  submit Command
+Tensor::add
+  allocate result Tensor with a's shape
+  build core::Command
+  Device::submit(command, kernels)
   return result
 ```
 
-The important Magnetron-inspired idea:
+`core::Command` is deliberately narrow:
 
 ```text
-high-level op -> uniform command -> device submit
+Op op
+Storage* a
+Storage* b
+Storage* out
+size_t elements
 ```
 
-Initial command shape:
+This is enough for same-shape contiguous binary ops. It is not enough for
+broadcasting, reductions, matmul, or non-contiguous views. Widen it only when a
+module needs that behavior.
 
-```cpp
-enum class OpCode {
-  Fill,
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Neg,
-  Relu,
-  Sum,
-  Mean,
-  Matmul,
-};
+## KernelLibrary
 
-struct Command {
-  OpCode op;
-  std::span<Tensor*> inputs;
-  std::span<Tensor*> outputs;
-};
-```
+`core::KernelLibrary` compiles Metal source from `COMTAM_KERNEL_DIR` and caches
+compute pipelines by kernel function name.
 
-This can change. The principle should not: do not hide kernel launches inside
-unrelated helper functions.
-
-## Autograd
-
-Autograd should be dynamic and eager.
-
-Each differentiable output stores enough information to compute local gradients:
+The mapping is:
 
 ```text
-GradNode
-  op
-  inputs
-  attrs
-  grad
+Op::ADD -> "add"
+Op::SUB -> "sub"
+Op::MUL -> "mul"
+Op::DIV -> "div"
 ```
 
-Backward:
+`binary.metal` currently exposes those four float32 kernels. The kernels assume:
 
-1. require scalar root
-2. topologically sort the dynamic graph
-3. seed root gradient with one
-4. traverse reverse topological order
-5. call local backward rules
-6. accumulate gradients
+- contiguous buffers
+- one output element per thread
+- float32 data
 
-Do not introduce a separate tape abstraction until storing nodes on tensors is
-clearly insufficient.
+Module 3 should pin down the kernel contract before adding more ops.
 
-## Initial Build Flow
+## Tests As Architecture
 
-The current CMake direction is:
+The current tests prove these architectural claims:
 
-```text
-vendor/metal
-  builds metal_cpp shim
+- `Context` creates a Metal device and command queue.
+- `Device::copy` rejects byte-count mismatches.
+- `Tensor` round-trips float32 host data.
+- `Tensor::from_vector` rejects wrong element counts.
+- two tensor headers can share one `Storage` safely.
+- writes through shared storage are visible through another tensor header.
+- `Tensor::add` matches a CPU oracle for same-shape vectors.
 
-comtam
-  builds executable from comtam/main.cpp
-  copies comtam/kernels/*.metal to build/kernels
-  optionally compiles default.metallib
-```
+If a claim matters architecturally, it should eventually have a test like this.
 
-Runtime source compilation is acceptable for the first GPU experiment. Offline
-`.metallib` compilation can become the default after the toolchain and workflow
-are stable.
+## Not In The Architecture Yet
 
-## Module 0 Target Architecture
+These are intentionally absent:
 
-Module 0 should end with:
-
-```text
-comtam/
-  main.cpp
-  core/
-    context.h/.cpp
-    device.h/.cpp
-    kernel.h/.cpp
-  kernels/
-    vadd.metal
-```
-
-The first real proof:
-
-```text
-host vectors -> Metal buffers -> vadd kernel -> host readback
-```
-
-No tensor class is required for this proof.
-
-## Module 1 Target Architecture
-
-Module 1 should add:
-
-```text
-storage.h/.cpp
-tensor.h/.cpp
-```
-
-The proof:
-
-```text
-Tensor::from_vector
-Tensor::to_vector
-Tensor add on GPU
-```
-
-## Things Not In The Architecture Yet
-
-These are intentionally excluded:
-
-- singleton manager
-- ATen-like allocator/deleter contexts
-- backend registry
-- multiple devices
 - Python bindings
-- lazy graph
-- kernel fusion
+- multiple backends
+- dynamic backend loading
+- allocator caches
+- many dtypes
 - serialization
+- async command scheduling
+- lazy graphs or fusion
+- autograd
+- `nn` modules and optimizers
 - profiling counters
 
-See [`AVOID.md`](AVOID.md) for the reasoning.
+Do not add them for symmetry. Add them only when a course module or failing test
+earns the complexity.
+
+## Near-Term Pressure Points
+
+The next likely rewrites are:
+
+1. Make `Tensor::to_vector` and future kernels respect `View` strides and
+   offsets.
+2. Move binary op validation out of wishful thinking and into explicit shape,
+   dtype, and contiguity checks.
+3. Decide whether binary ops should stay as static `Tensor` methods or become
+   free functions once the public API starts to grow.
+4. Extend `Command` only when broadcasting, reductions, or matmul need more
+   metadata.
 
 ## Evolution Rule
 
 Every new subsystem must answer:
 
 ```text
-What current code became simpler because this exists?
+What current code became simpler or more correct because this exists?
 ```
 
-If the answer is "future flexibility", wait.
+If the honest answer is only "future flexibility", wait.

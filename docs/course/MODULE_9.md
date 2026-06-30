@@ -24,8 +24,8 @@ What is the target number / fixed behavior?
 How will a test or benchmark confirm it?
 ```
 
-If you cannot fill those in, do not make the change. Put it in
-[`BUG_LEDGER.md`](BUG_LEDGER.md) as deferred instead.
+If you cannot fill those in, do not make the change. Put it in the Module 9
+solution note as deferred instead.
 
 ## Assignment 9.1: Build A Tiny Benchmark Harness ⭐⭐
 
@@ -89,7 +89,7 @@ with tests green, is the entire skill. Everything else is folklore.
 
 **Task:** Turn the sharpest remaining correctness risks into explicit behavior.
 
-Candidates (pick the ones your bug ledger flagged):
+Candidates (pick the ones your previous solution notes flagged):
 
 1. Division by zero and NaN/Inf handling: define and test the behavior.
 2. Shape and dtype validation messages: are they clear at the op boundary?

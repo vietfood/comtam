@@ -1,7 +1,7 @@
 ## Final Projects
 
 Final projects prove the eager stack works end to end. Choose one only after
-Modules 0 through 7 are stable. Module 8 is strongly recommended first, because
+Modules 1 through 7 are stable. Module 8 is strongly recommended first, because
 it shapes the training loop every project depends on.
 
 Each project ends with a gate, not a demo. Separate "compiled", "smoke ran", and
@@ -86,8 +86,8 @@ Rules:
 - Each new op needs a CPU-oracle forward test and a numerical gradient test
   before it counts.
 - Add ops only with the dispatch and autograd patterns already established. If an
-  op does not fit, that is a finding for the bug ledger, not a reason to special
-  case it.
+  op does not fit, record that design pressure in the project notes instead of
+  special-casing it.
 
 **Why this project:** Breadth with discipline. This project rewards the test
 infrastructure from Modules 4 and 6 and reveals where the op/dispatch/autograd
