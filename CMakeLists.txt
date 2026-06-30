@@ -22,5 +22,6 @@ set_target_properties(comtam PROPERTIES
 if(COMTAM_BUILD_TESTS)
   message(STATUS "Building tests")
   enable_testing()
+  add_subdirectory(vendor/Catch2)
   add_subdirectory(tests)
 endif()
