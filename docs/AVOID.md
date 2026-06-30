@@ -180,7 +180,7 @@ Doing all of that before a single kernel works makes the first milestone blurry.
 
 ### comtam rule
 
-Module 0 kernel management should be tiny:
+Early kernel management should be tiny:
 
 ```text
 KernelLibrary
@@ -275,4 +275,3 @@ Before adding a subsystem, ask:
 4. Is this actually an ATen idea wearing a tiny-framework costume?
 
 If the answer is vague, do not add it yet.
-

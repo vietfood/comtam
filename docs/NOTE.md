@@ -20,9 +20,9 @@ For `comtam`, setup and execution failures should throw C++ exceptions.
 Use `std::runtime_error` first. A custom `MetalError` can wait until ordinary
 exceptions become repetitive.
 
-This is fine because Module 0 is not building a C API. If a Metal device cannot
-be created, a shader cannot compile, a pipeline cannot be built, or a command
-buffer fails, there is no useful local recovery yet.
+This is fine because early `comtam` is not building a C API. If a Metal device
+cannot be created, a shader cannot compile, a pipeline cannot be built, or a
+command buffer fails, there is no useful local recovery yet.
 
 Example:
 
@@ -77,8 +77,9 @@ if (command_buffer->status() == MTL::CommandBufferStatusError) {
 }
 ```
 
-For Module 0, blocking with `waitUntilCompleted()` is acceptable. Async
-execution can wait until correctness is stable.
+Blocking with `waitUntilCompleted()` is acceptable while correctness is still
+being established. Async execution can wait until the synchronous path is
+stable.
 
 ## Ownership policy
 
@@ -191,4 +192,3 @@ For early `comtam`:
 - check command buffer status after `waitUntilCompleted()`
 - create an autorelease pool in `main`
 - avoid a global Metal manager
-

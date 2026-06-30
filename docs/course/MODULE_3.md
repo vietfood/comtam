@@ -106,7 +106,7 @@ Questions:
    binds a buffer sized for a different element count?
 
 **Deliverable:** A checklist confirming names, bounds guard, and types all agree.
-File any mismatch in [`BUG_LEDGER.md`](BUG_LEDGER.md).
+File any mismatch in your Module 3 solution note.
 
 ## Assignment 3.3: Implement The Binary Op Layer ⭐⭐
 
