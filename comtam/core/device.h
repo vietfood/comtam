@@ -51,6 +51,14 @@ public:
         std::memcpy(data, storage.ptr()->contents(), bytes);
     }
 
+    void copy(Storage& src, Storage& dst) {
+        if (src.size() != dst.size()) {
+            throw std::runtime_error("[ERROR] Storage sizes do not match");
+        }
+        std::memcpy(dst.ptr()->contents(), src.ptr()->contents(), src.size());
+        dst.ptr()->didModifyRange(NS::Range(0, dst.size()));
+    }
+
     // methods for command execution
     void submit(const Command& command, KernelLibrary& kernels);
 
