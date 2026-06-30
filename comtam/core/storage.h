@@ -5,6 +5,8 @@
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLBuffer.hpp"
 #include <cstddef>
+#include <stdexcept>
+#include <string>
 
 namespace comtam::core {
 class Storage {
@@ -34,6 +36,15 @@ public:
     size_t size() const { return size_; }
     MTL::Buffer* ptr() { return buffer_.get(); }
     const MTL::Buffer* ptr() const { return buffer_.get(); }
+
+    template <typename T>
+    T at(size_t index) const {
+        const size_t byte_offset = index * sizeof(T);
+        if (byte_offset + sizeof(T) > size_) {
+            throw std::runtime_error("[ERROR] Storage index out of bounds");
+        }
+        return static_cast<const T*>(buffer_->contents())[index];
+    }
 
     void print(const std::string& label) const;
 private:
