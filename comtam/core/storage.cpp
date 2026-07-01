@@ -1,10 +1,11 @@
 #include "comtam/core/storage.h"
-#include "comtam/utils/common.h"
 
-#include "Metal/MTLResource.hpp"
-#include "Metal/MTLDevice.hpp"
 #include <iostream>
 #include <string>
+
+#include "Metal/MTLDevice.hpp"
+#include "Metal/MTLResource.hpp"
+#include "comtam/utils/common.h"
 
 using namespace comtam::core;
 
@@ -18,5 +19,6 @@ Storage::Storage(size_t bytes, MTL::Device* device) : size_(bytes) {
 }
 
 void Storage::print(const std::string& label) const {
-    comtam::utils::print_array(static_cast<float*>(buffer_->contents()), size_ / sizeof(float), label);
+    comtam::utils::print_array(static_cast<float*>(buffer_->contents()), size_ / sizeof(float),
+                               label);
 }

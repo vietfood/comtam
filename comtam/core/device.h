@@ -10,13 +10,12 @@
 #include "Metal/MTLDevice.hpp"
 #include "comtam/core/storage.h"
 
-
 namespace comtam::core {
 struct Command;
 class KernelLibrary;
 
 class Device {
-public:
+   public:
     Device();
 
     // NS::SharedPtr will automatically handle memory management
@@ -32,7 +31,7 @@ public:
     // methods for storage
     Storage allocate(size_t bytes);
 
-    template<typename T>
+    template <typename T>
     void copy(const T* data, size_t count, Storage& storage) {
         const size_t bytes = count * sizeof(T);
         if (bytes != storage.size()) {
@@ -42,7 +41,7 @@ public:
         storage.ptr()->didModifyRange(NS::Range(0, bytes));
     }
 
-    template<typename T>
+    template <typename T>
     void copy(Storage& storage, T* data, size_t count) {
         const size_t bytes = count * sizeof(T);
         if (bytes != storage.size()) {
@@ -62,8 +61,8 @@ public:
     // methods for command execution
     void submit(const Command& command, KernelLibrary& kernels);
 
-private:
+   private:
     NS::SharedPtr<MTL::Device> device_;
     NS::SharedPtr<MTL::CommandQueue> command_queue_;
 };
-}
+}  // namespace comtam::core

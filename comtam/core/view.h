@@ -27,7 +27,7 @@ struct View {
     bool operator==(const View& other) const = default;
 
     // --- Constructor ---
-    View(const ViewVector &shape, ViewInt offset = 0)
+    View(const ViewVector& shape, ViewInt offset = 0)
         : shape(shape), strides(shape.size(), 1), offset(offset), ref_strides(shape.size(), 1) {
         for (ViewInt i = static_cast<ViewInt>(shape.size()) - 2; i >= 0; --i) {
             strides[i] = strides[i + 1] * shape[i + 1];
@@ -35,7 +35,7 @@ struct View {
         }
     }
 
-    View(const ViewVector &shape, const ViewVector &strides, ViewInt offset = 0)
+    View(const ViewVector& shape, const ViewVector& strides, ViewInt offset = 0)
         : shape(shape), strides(strides), offset(offset), ref_strides(shape.size(), 1) {
         if (shape.size() != strides.size()) {
             throw std::runtime_error("View: shape and strides must have the same rank");
@@ -47,13 +47,9 @@ struct View {
     }
 
     // --- Getter ---
-    bool is_contiguous() const {
-        return strides == ref_strides;
-    }
+    bool is_contiguous() const { return strides == ref_strides; }
 
-    size_t dim() const {
-        return shape.size();
-    }
+    size_t dim() const { return shape.size(); }
 
     ViewInt numel() const {
         return std::reduce(shape.begin(), shape.end(), ViewInt{1}, std::multiplies<>());
@@ -102,7 +98,7 @@ struct View {
      * then the new shape is (a, c, b).
      * - Reference: https://pytorch.org/docs/stable/generated/torch.permute.html
      */
-    View permute(const ViewVector &new_axis) const {
+    View permute(const ViewVector& new_axis) const {
         if (new_axis.size() != shape.size()) {
             throw std::invalid_argument("Permutation new axis doesn't match with current shape");
         }
@@ -156,16 +152,16 @@ struct View {
      * - For example: `auto y = x.shrink({{1, 3}, {1, 3}});`
      * - Then: axis 0 keeps rows [1, 3), and axis 1 keeps cols [1, 3).
      */
-    View shrink(const PairViewVector &limits) const {
+    View shrink(const PairViewVector& limits) const {
         if (limits.size() != shape.size()) {
             throw std::invalid_argument("The numbers of each limit should match with shape size");
         }
 
         bool is_valid_limits = true;
         for (size_t i = 0; i < limits.size(); ++i) {
-            is_valid_limits &= (limits[i].first < limits[i].second)               // start < end
-                               && (limits[i].first >= 0 && limits[i].second >= 0) // non-negative
-                               && (limits[i].second <= shape[i]); // end <= shape (in bound)
+            is_valid_limits &= (limits[i].first < limits[i].second)                // start < end
+                               && (limits[i].first >= 0 && limits[i].second >= 0)  // non-negative
+                               && (limits[i].second <= shape[i]);  // end <= shape (in bound)
         }
 
         if (!is_valid_limits) {
@@ -181,9 +177,9 @@ struct View {
         return {new_shape, strides, new_offset};
     }
 
-    View expand(const ViewVector &new_shape) const {
+    View expand(const ViewVector& new_shape) const {
         ViewInt new_ndim = static_cast<ViewInt>(new_shape.size());
-        ViewInt current_ndim = static_cast<ViewInt>(dim()); // so the loop index can be negative
+        ViewInt current_ndim = static_cast<ViewInt>(dim());  // so the loop index can be negative
 
         if (new_ndim < current_ndim) {
             throw std::invalid_argument("expand shape cannot have fewer dimensions");
@@ -214,7 +210,7 @@ struct View {
         return {new_shape, new_strides, offset};
     }
 
-    View reshape(const ViewVector &new_shape) const {
+    View reshape(const ViewVector& new_shape) const {
         ViewInt new_numel =
             std::reduce(new_shape.begin(), new_shape.end(), ViewInt{1}, std::multiplies<>());
 
@@ -230,4 +226,4 @@ struct View {
         return {new_shape, offset};
     }
 };
-} // namespace comtam::core
+}  // namespace comtam::core

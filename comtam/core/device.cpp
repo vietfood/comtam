@@ -3,7 +3,6 @@
 #include "Foundation/NSAutoreleasePool.hpp"
 #include "Metal/MTLCommandBuffer.hpp"
 #include "Metal/MTLCommandEncoder.hpp"
-
 #include "Metal/MTLComputeCommandEncoder.hpp"
 #include "comtam/core/kernel.h"
 #include "comtam/core/storage.h"
@@ -68,8 +67,7 @@ void Device::submit(const Command& command, KernelLibrary& kernels) {
     command_buffer->waitUntilCompleted();
 
     if (command_buffer->status() == MTL::CommandBufferStatusError) {
-      throw std::runtime_error(
-          "[ERROR] Metal command buffer failed: " +
-          comtam::utils::ns_error_message(command_buffer->error()));
+        throw std::runtime_error("[ERROR] Metal command buffer failed: " +
+                                 comtam::utils::ns_error_message(command_buffer->error()));
     }
 }

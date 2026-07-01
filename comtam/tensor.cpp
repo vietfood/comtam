@@ -1,14 +1,15 @@
 #include "comtam/tensor.h"
 
+#include <stdexcept>
+
 #include "comtam/core/context.h"
 #include "comtam/core/ops.h"
 #include "comtam/core/view.h"
-#include <stdexcept>
 
 using namespace comtam;
 
 // ----- Binary operation -----
-Tensor Tensor::binop(const Tensor &a, const Tensor &b, const core::Op& op, core::Context& ctx) {
+Tensor Tensor::binop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx) {
     auto& device = ctx.device();
     auto& kernels = ctx.kernels();
 
@@ -42,26 +43,26 @@ Tensor Tensor::binop(const Tensor &a, const Tensor &b, const core::Op& op, core:
     return out;
 }
 
-Tensor Tensor::add(const Tensor &a, const Tensor &b, core::Context& ctx) {
+Tensor Tensor::add(const Tensor& a, const Tensor& b, core::Context& ctx) {
     return Tensor::binop(a, b, core::Op::ADD, ctx);
 }
 
-Tensor Tensor::sub(const Tensor &a, const Tensor &b, core::Context& ctx) {
+Tensor Tensor::sub(const Tensor& a, const Tensor& b, core::Context& ctx) {
     return Tensor::binop(a, b, core::Op::SUB, ctx);
 }
 
-Tensor Tensor::mul(const Tensor &a, const Tensor &b, core::Context& ctx) {
+Tensor Tensor::mul(const Tensor& a, const Tensor& b, core::Context& ctx) {
     return Tensor::binop(a, b, core::Op::MUL, ctx);
 }
 
-Tensor Tensor::div(const Tensor &a, const Tensor &b, core::Context& ctx) {
+Tensor Tensor::div(const Tensor& a, const Tensor& b, core::Context& ctx) {
     return Tensor::binop(a, b, core::Op::DIV, ctx);
 }
 
 // ----- View operation -----
 // These operations are free (change view only)
 
-Tensor Tensor::permute(const std::vector<int64_t> &new_axis) {
+Tensor Tensor::permute(const std::vector<int64_t>& new_axis) {
     return Tensor(storage_, view_.permute(new_axis), dtype_);
 }
 
@@ -69,14 +70,14 @@ Tensor Tensor::transpose(int64_t a, int64_t b) {
     return Tensor(storage_, view_.transpose(a, b), dtype_);
 }
 
-Tensor Tensor::shrink(const std::vector<std::pair<int64_t, int64_t>> &limits) {
+Tensor Tensor::shrink(const std::vector<std::pair<int64_t, int64_t>>& limits) {
     return Tensor(storage_, view_.shrink(limits), dtype_);
 }
 
-Tensor Tensor::expand(const std::vector<int64_t> &new_shape) {
+Tensor Tensor::expand(const std::vector<int64_t>& new_shape) {
     return Tensor(storage_, view_.expand(new_shape), dtype_);
 }
 
-Tensor Tensor::reshape(const std::vector<int64_t> &new_shape) {
+Tensor Tensor::reshape(const std::vector<int64_t>& new_shape) {
     return Tensor(storage_, view_.reshape(new_shape), dtype_);
 }

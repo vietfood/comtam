@@ -41,4 +41,4 @@ std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
     std::ranges::generate(out, [&] { return dist(rng()); });
     return out;
 }
-}
+}  // namespace comtam::utils

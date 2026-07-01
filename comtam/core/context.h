@@ -1,12 +1,13 @@
 #pragma once
 
+#include <memory>
+
 #include "comtam/core/device.h"
 #include "comtam/core/kernel.h"
-#include <memory>
 
 namespace comtam::core {
 class Context {
-public:
+   public:
     Context();
     ~Context() = default;
 
@@ -16,8 +17,8 @@ public:
     KernelLibrary& kernels() { return *kernels_; }
     const KernelLibrary& kernels() const { return *kernels_; }
 
-private:
+   private:
     std::unique_ptr<Device> device_;
     std::unique_ptr<KernelLibrary> kernels_;
 };
-}
+}  // namespace comtam::core

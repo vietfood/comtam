@@ -1,27 +1,23 @@
 #pragma once
 
+#include <cstddef>
+#include <stdexcept>
+#include <string>
 #include <type_traits>
 
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLBuffer.hpp"
-#include <cstddef>
-#include <stdexcept>
-#include <string>
 
 namespace comtam::core {
 class Storage {
-public:
+   public:
     Storage(size_t bytes, MTL::Device* device);
     ~Storage() = default;
 
     // move constructor
-    Storage(Storage&& other) noexcept
-    : size_(other.size_)
-    , buffer_(std::move(other.buffer_))
-    {}
+    Storage(Storage&& other) noexcept : size_(other.size_), buffer_(std::move(other.buffer_)) {}
 
-    Storage& operator=(Storage&& other) noexcept
-    {
+    Storage& operator=(Storage&& other) noexcept {
         if (this != &other) {
             size_ = other.size_;
             buffer_ = std::move(other.buffer_);
@@ -47,8 +43,9 @@ public:
     }
 
     void print(const std::string& label) const;
-private:
+
+   private:
     size_t size_;
     NS::SharedPtr<MTL::Buffer> buffer_;
 };
-}
+}  // namespace comtam::core

@@ -1,16 +1,17 @@
 #pragma once
 
-#include "comtam/core/dtype.h"
-#include "comtam/core/storage.h"
 #include <stdexcept>
 #include <string>
+
+#include "comtam/core/dtype.h"
+#include "comtam/core/storage.h"
 
 namespace comtam::core {
 enum class Op {
     // Binary operations
     ADD,
     SUB,
-    MUL, // this is element-wise multiplication
+    MUL,  // this is element-wise multiplication
     DIV,
 };
 
@@ -50,9 +51,9 @@ struct Kernel {
 // Warning: we assume this is BinaryCommand
 struct Command {
     Kernel kernel;
-    Storage *a;
-    Storage *b;
-    Storage *out;
+    Storage* a;
+    Storage* b;
+    Storage* out;
     size_t elements;
 };
-} // namespace comtam::core
+}  // namespace comtam::core

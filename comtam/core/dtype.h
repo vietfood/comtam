@@ -5,9 +5,7 @@
 #include <unordered_map>
 
 namespace comtam::core {
-enum class DType {
-    Float32
-};
+enum class DType { Float32 };
 
 static std::unordered_map<DType, size_t> dtype_size_map = {{DType::Float32, sizeof(float)}};
 
@@ -25,4 +23,4 @@ static std::unordered_map<DType, size_t> dtype_size_map = {{DType::Float32, size
     }()
 // clang-format on
 
-} // namespace comtam::core
+}  // namespace comtam::core

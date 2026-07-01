@@ -1,22 +1,23 @@
 #pragma once
 
-#include "Foundation/NSError.hpp"
 #include <fstream>
 #include <iostream>
 #include <string>
 
+#include "Foundation/NSError.hpp"
+
 namespace comtam::utils {
 inline std::string ns_error_message(NS::Error* error) {
-  if (error == nullptr) {
-    return "[ERROR] Unknown Metal error";
-  }
+    if (error == nullptr) {
+        return "[ERROR] Unknown Metal error";
+    }
 
-  NS::String* description = error->localizedDescription();
-  if (description == nullptr) {
-    return "[ERROR] Unknown Metal error";
-  }
+    NS::String* description = error->localizedDescription();
+    if (description == nullptr) {
+        return "[ERROR] Unknown Metal error";
+    }
 
-  return description->utf8String();
+    return description->utf8String();
 }
 
 // a small read file util
@@ -24,7 +25,8 @@ inline std::string ns_error_message(NS::Error* error) {
 inline std::string read_file(const std::string& path) {
     // Open in binary mode to avoid conversion overhead
     std::ifstream file(path, std::ios::binary | std::ios::ate);
-    if (!file) return "";
+    if (!file)
+        return "";
 
     // Determine file size and pre-allocate memory
     std::streamsize size = file.tellg();
@@ -55,4 +57,4 @@ void print_array(T* arr, std::size_t size, std::string_view label = "") {
     }
     std::cout << "]\n";
 }
-}
+}  // namespace comtam::utils

@@ -16,12 +16,12 @@
 
 namespace comtam {
 class Tensor {
-public:
+   public:
     /**
      * Initialize Tensor from an array
      */
     template <typename T>
-    Tensor(const T *data, std::vector<core::ViewInt> shape, core::Device &device,
+    Tensor(const T* data, std::vector<core::ViewInt> shape, core::Device& device,
            core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
@@ -43,7 +43,7 @@ public:
      */
 
     // init from a shape (always contiguous and offset = 0)
-    Tensor(const std::vector<core::ViewInt> &shape, core::Device &device,
+    Tensor(const std::vector<core::ViewInt>& shape, core::Device& device,
            core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
@@ -53,7 +53,7 @@ public:
         });
     }
 
-    Tensor(const core::View &view, core::Device &device, core::DType dtype = core::DType::Float32)
+    Tensor(const core::View& view, core::Device& device, core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(view), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_t>(view_.numel()));
@@ -66,7 +66,7 @@ public:
      * Note: we pass by const reference so `storage_ = storage` will trigger a copy
      * => storage_ and storage both point to underlying object (new reference)
      */
-    Tensor(const std::shared_ptr<core::Storage> &storage, const std::vector<core::ViewInt> &shape,
+    Tensor(const std::shared_ptr<core::Storage>& storage, const std::vector<core::ViewInt>& shape,
            core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
@@ -79,7 +79,7 @@ public:
         });
     }
 
-    Tensor(const std::shared_ptr<core::Storage> &storage, const core::View &view,
+    Tensor(const std::shared_ptr<core::Storage>& storage, const core::View& view,
            core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(view), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
@@ -92,7 +92,8 @@ public:
     /**
      * Get data from a vector for an initialized Tensor
      */
-    template <typename T> void from_vector(const std::vector<T> &data, core::Device &device) {
+    template <typename T>
+    void from_vector(const std::vector<T>& data, core::Device& device) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             if constexpr (!std::is_same_v<T, scalar_t>) {
                 throw std::runtime_error("dtype of vector didn't match with input Tensor");
@@ -119,14 +120,15 @@ public:
         });
     }
 
-    void from_vector(const std::vector<float> &data, core::Device &device) {
+    void from_vector(const std::vector<float>& data, core::Device& device) {
         from_vector<float>(data, device);
     }
 
     /**
      * Return a vector from a Tensor
      */
-    template <typename T> std::vector<T> to_vector(core::Device &) const {
+    template <typename T>
+    std::vector<T> to_vector(core::Device&) const {
         return COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             if constexpr (!std::is_same_v<T, scalar_t>) {
                 throw std::runtime_error("dtype of vector didn't match with input Tensor");
@@ -146,35 +148,31 @@ public:
         });
     }
 
-    std::vector<float> to_vector(core::Device &device) const {
-        return to_vector<float>(device);
-    }
+    std::vector<float> to_vector(core::Device& device) const { return to_vector<float>(device); }
 
-    size_t numel() const {
-        return static_cast<size_t>(view_.numel());
-    }
-
-    size_t dim() const {
-        return view_.dim();
-    }
+    size_t numel() const { return static_cast<size_t>(view_.numel()); }
+    size_t dim() const { return view_.dim(); }
+    std::vector<core::ViewInt> shape() const { return view_.shape; }
+    std::vector<core::ViewInt> strides() const { return view_.strides; }
+    core::DType dtype() const { return dtype_; }
 
     // ----- View operation -----
-    Tensor permute(const std::vector<int64_t> &new_axis);
+    Tensor permute(const std::vector<int64_t>& new_axis);
     Tensor transpose(int64_t a, int64_t b);
-    Tensor shrink(const std::vector<std::pair<int64_t, int64_t>> &limits);
-    Tensor expand(const std::vector<int64_t> &new_shape);
-    Tensor reshape(const std::vector<int64_t> &new_shape);
+    Tensor shrink(const std::vector<std::pair<int64_t, int64_t>>& limits);
+    Tensor expand(const std::vector<int64_t>& new_shape);
+    Tensor reshape(const std::vector<int64_t>& new_shape);
 
     // ----- Binary operation -----
-    static Tensor binop(const Tensor &a, const Tensor &b, const core::Op& op, core::Context& ctx);
-    static Tensor add(const Tensor &a, const Tensor &b, core::Context& ctx);
-    static Tensor sub(const Tensor &a, const Tensor &b, core::Context& ctx);
-    static Tensor mul(const Tensor &a, const Tensor &b, core::Context& ctx);
-    static Tensor div(const Tensor &a, const Tensor &b, core::Context& ctx);
+    static Tensor binop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx);
+    static Tensor add(const Tensor& a, const Tensor& b, core::Context& ctx);
+    static Tensor sub(const Tensor& a, const Tensor& b, core::Context& ctx);
+    static Tensor mul(const Tensor& a, const Tensor& b, core::Context& ctx);
+    static Tensor div(const Tensor& a, const Tensor& b, core::Context& ctx);
 
-private:
+   private:
     core::DType dtype_;
     core::View view_;
     std::shared_ptr<core::Storage> storage_;
 };
-} // namespace comtam
+}  // namespace comtam
