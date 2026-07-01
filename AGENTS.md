@@ -89,7 +89,8 @@ For code changes:
 - If Metal execution fails inside a sandbox, state that and run outside the
   sandbox only with explicit permission.
 - Treat printed arrays as debugging, not tests.
-- Prefer CPU oracles and exact/epsilon comparisons.
+- Prefer independent oracles and exact/epsilon comparisons: MLX C for framework
+  semantics, and tiny manual/CPU oracles when they are clearer.
 
 For module grading:
 
