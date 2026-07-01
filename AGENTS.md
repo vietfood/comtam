@@ -96,6 +96,9 @@ For module grading:
 - Mention which commands were run.
 - Separate "compiled", "smoke ran", and "module gate passed".
 - Call out missing tests directly.
+- Write assignment-level feedback directly in the matching
+  `docs/solution/MODULE_N.md` file under `Agent Feedback / Grading` sections,
+  following the style used by `MODULE_1.md` and `MODULE_2.md`.
 
 ## Style Notes
 
@@ -104,4 +107,3 @@ For module grading:
 - Use `rg` for search.
 - Use `apply_patch` for manual edits.
 - Do not revert user changes unless explicitly asked.
-
