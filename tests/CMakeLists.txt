@@ -1,3 +1,5 @@
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 add_executable(comtam_tests
   core/context.cpp
   core/view.cpp
