@@ -1,26 +1,25 @@
 #pragma once
 
-#include "comtam/core/view.h"
-
-#include "mlx/c/mlx.h"
-
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "comtam/core/view.h"
+#include "mlx/c/mlx.h"
+
 namespace comtam::tests::mlx_oracle {
 
-using BinaryOp = int (*)(mlx_array *, mlx_array, mlx_array, mlx_stream);
+using BinaryOp = int (*)(mlx_array*, mlx_array, mlx_array, mlx_stream);
 
-inline void check(int code, const char *what) {
+inline void check(int code, const char* what) {
     if (code != 0) {
         throw std::runtime_error(std::string("mlx-c call failed: ") + what);
     }
 }
 
-inline std::vector<int> to_mlx_shape(const std::vector<core::ViewInt> &shape) {
+inline std::vector<int> to_mlx_shape(const std::vector<core::ViewInt>& shape) {
     std::vector<int> result;
     result.reserve(shape.size());
 
@@ -35,21 +34,19 @@ inline std::vector<int> to_mlx_shape(const std::vector<core::ViewInt> &shape) {
 }
 
 class Stream {
-public:
+   public:
     Stream() : stream_(mlx_default_cpu_stream_new()) {
         if (!stream_.ctx) {
             throw std::runtime_error("mlx-c failed to create a default CPU stream");
         }
     }
 
-    Stream(const Stream &) = delete;
-    auto operator=(const Stream &) -> Stream & = delete;
+    Stream(const Stream&) = delete;
+    Stream& operator=(const Stream&) = delete;
 
-    Stream(Stream &&other) noexcept : stream_(other.stream_) {
-        other.stream_ = mlx_stream_new();
-    }
+    Stream(Stream&& other) noexcept : stream_(other.stream_) { other.stream_ = mlx_stream_new(); }
 
-    auto operator=(Stream &&other) noexcept -> Stream & {
+    Stream& operator=(Stream&& other) noexcept {
         if (this != &other) {
             reset();
             stream_ = other.stream_;
@@ -58,15 +55,11 @@ public:
         return *this;
     }
 
-    ~Stream() {
-        reset();
-    }
+    ~Stream() { reset(); }
 
-    [[nodiscard]] auto get() const -> mlx_stream {
-        return stream_;
-    }
+    [[nodiscard]] mlx_stream get() const { return stream_; }
 
-private:
+   private:
     void reset() {
         if (stream_.ctx) {
             mlx_stream_free(stream_);
@@ -78,7 +71,7 @@ private:
 };
 
 class Array {
-public:
+   public:
     Array() : array_(mlx_array_new()) {}
 
     explicit Array(mlx_array array) : array_(array) {
@@ -87,14 +80,12 @@ public:
         }
     }
 
-    Array(const Array &) = delete;
-    auto operator=(const Array &) -> Array & = delete;
+    Array(const Array&) = delete;
+    Array& operator=(const Array&) = delete;
 
-    Array(Array &&other) noexcept : array_(other.array_) {
-        other.array_ = mlx_array_new();
-    }
+    Array(Array&& other) noexcept : array_(other.array_) { other.array_ = mlx_array_new(); }
 
-    auto operator=(Array &&other) noexcept -> Array & {
+    Array& operator=(Array&& other) noexcept {
         if (this != &other) {
             reset();
             array_ = other.array_;
@@ -103,26 +94,20 @@ public:
         return *this;
     }
 
-    ~Array() {
-        reset();
-    }
+    ~Array() { reset(); }
 
-    [[nodiscard]] static auto from_float32(const std::vector<float> &data,
-                                           const std::vector<core::ViewInt> &shape) -> Array {
+    [[nodiscard]] static Array from_float32(const std::vector<float>& data,
+                                            const std::vector<core::ViewInt>& shape) {
         auto mlx_shape = to_mlx_shape(shape);
         return Array(mlx_array_new_data(data.data(), mlx_shape.data(),
                                         static_cast<int>(mlx_shape.size()), MLX_FLOAT32));
     }
 
-    [[nodiscard]] auto get() const -> mlx_array {
-        return array_;
-    }
+    [[nodiscard]] mlx_array get() const { return array_; }
 
-    [[nodiscard]] auto out_ptr() -> mlx_array * {
-        return &array_;
-    }
+    [[nodiscard]] mlx_array* out_ptr() { return &array_; }
 
-private:
+   private:
     void reset() {
         if (array_.ctx) {
             mlx_array_free(array_);
@@ -133,14 +118,13 @@ private:
     mlx_array array_;
 };
 
-inline auto to_vector_float32(const Array &array, const Stream &stream) -> std::vector<float> {
+inline std::vector<float> to_vector_float32(const Array& array, const Stream& stream) {
     Array contiguous;
-    check(mlx_contiguous(contiguous.out_ptr(), array.get(), false, stream.get()),
-          "mlx_contiguous");
+    check(mlx_contiguous(contiguous.out_ptr(), array.get(), false, stream.get()), "mlx_contiguous");
     check(mlx_array_eval(contiguous.get()), "mlx_array_eval");
     check(mlx_synchronize(stream.get()), "mlx_synchronize");
 
-    const auto *data = mlx_array_data_float32(contiguous.get());
+    const auto* data = mlx_array_data_float32(contiguous.get());
     if (data == nullptr) {
         throw std::runtime_error("mlx-c array data is unavailable after eval");
     }
@@ -149,9 +133,9 @@ inline auto to_vector_float32(const Array &array, const Stream &stream) -> std::
     return {data, data + size};
 }
 
-inline auto binary_float32(const std::vector<float> &lhs, const std::vector<float> &rhs,
-                           const std::vector<core::ViewInt> &shape, BinaryOp op)
-    -> std::vector<float> {
+inline std::vector<float> binary_float32(const std::vector<float>& lhs,
+                                         const std::vector<float>& rhs,
+                                         const std::vector<core::ViewInt>& shape, BinaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, shape);
     auto b = Array::from_float32(rhs, shape);
@@ -161,9 +145,9 @@ inline auto binary_float32(const std::vector<float> &lhs, const std::vector<floa
     return to_vector_float32(result, stream);
 }
 
-inline auto transpose_float32(const std::vector<float> &data,
-                              const std::vector<core::ViewInt> &shape,
-                              const std::vector<int> &axes) -> std::vector<float> {
+inline std::vector<float> transpose_float32(const std::vector<float>& data,
+                                            const std::vector<core::ViewInt>& shape,
+                                            const std::vector<int>& axes) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     Array result;
@@ -173,11 +157,10 @@ inline auto transpose_float32(const std::vector<float> &data,
     return to_vector_float32(result, stream);
 }
 
-inline auto slice_float32(const std::vector<float> &data,
-                          const std::vector<core::ViewInt> &shape,
-                          const std::vector<int> &start,
-                          const std::vector<int> &stop,
-                          const std::vector<int> &strides) -> std::vector<float> {
+inline std::vector<float> slice_float32(const std::vector<float>& data,
+                                        const std::vector<core::ViewInt>& shape,
+                                        const std::vector<int>& start, const std::vector<int>& stop,
+                                        const std::vector<int>& strides) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     Array result;
@@ -188,10 +171,9 @@ inline auto slice_float32(const std::vector<float> &data,
     return to_vector_float32(result, stream);
 }
 
-inline auto broadcast_to_float32(const std::vector<float> &data,
-                                 const std::vector<core::ViewInt> &shape,
-                                 const std::vector<core::ViewInt> &target_shape)
-    -> std::vector<float> {
+inline std::vector<float> broadcast_to_float32(const std::vector<float>& data,
+                                               const std::vector<core::ViewInt>& shape,
+                                               const std::vector<core::ViewInt>& target_shape) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     auto mlx_shape = to_mlx_shape(target_shape);
@@ -203,9 +185,9 @@ inline auto broadcast_to_float32(const std::vector<float> &data,
     return to_vector_float32(result, stream);
 }
 
-inline auto reshape_float32(const std::vector<float> &data,
-                            const std::vector<core::ViewInt> &shape,
-                            const std::vector<core::ViewInt> &target_shape) -> std::vector<float> {
+inline std::vector<float> reshape_float32(const std::vector<float>& data,
+                                          const std::vector<core::ViewInt>& shape,
+                                          const std::vector<core::ViewInt>& target_shape) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     auto mlx_shape = to_mlx_shape(target_shape);
@@ -217,4 +199,4 @@ inline auto reshape_float32(const std::vector<float> &data,
     return to_vector_float32(result, stream);
 }
 
-} // namespace comtam::tests::mlx_oracle
+}  // namespace comtam::tests::mlx_oracle

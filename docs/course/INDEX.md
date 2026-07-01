@@ -73,7 +73,7 @@ Follow this order even if a later module looks shinier.
 1. [`MODULE_1.md`](MODULE_1.md) - storage invariants and tensor metadata ownership
 2. [`MODULE_2.md`](MODULE_2.md) - master views, strides, offsets, and indexing
 3. [`MODULE_3.md`](MODULE_3.md) - eager operator dispatch to a Metal kernel
-4. [`MODULE_4.md`](MODULE_4.md) - build forward correctness against a CPU oracle
+4. [`MODULE_4.md`](MODULE_4.md) - build forward correctness against an external oracle
 5. [`MODULE_5.md`](MODULE_5.md) - broadcasting, reductions, and matmul
 6. [`MODULE_6.md`](MODULE_6.md) - reverse-mode autograd
 7. [`MODULE_7.md`](MODULE_7.md) - nn modules, parameters, and SGD
@@ -106,7 +106,7 @@ Reference material:
 | [`MODULE_1.md`](MODULE_1.md) | Storage invariants | Who owns GPU memory, how are bytes counted, and can storage be shared safely? |
 | [`MODULE_2.md`](MODULE_2.md) | Views and strides | How does logical indexing map to storage? |
 | [`MODULE_3.md`](MODULE_3.md) | Eager dispatch | What happens from `add(a, b)` to a launched kernel? |
-| [`MODULE_4.md`](MODULE_4.md) | Forward correctness | Does forward match a CPU reference? |
+| [`MODULE_4.md`](MODULE_4.md) | Forward correctness | Does forward match an independent reference? |
 | [`MODULE_5.md`](MODULE_5.md) | Broadcast/reduce/matmul | How do shape-changing ops dispatch kernels? |
 | [`MODULE_6.md`](MODULE_6.md) | Autograd | Do backward rules compose correctly? |
 | [`MODULE_7.md`](MODULE_7.md) | nn and SGD | How do parameters, modules, and optimizers fit eager autograd? |
@@ -120,5 +120,6 @@ Reference material:
 | [`MODULE_1.md`](MODULE_1.md) | Passed | `cmake -S . -B build -DCOMTAM_BUILD_TESTS=ON`; `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-06-30. Detailed grading lives in [`../solution/MODULE_1.md`](../solution/MODULE_1.md). |
 | [`MODULE_2.md`](MODULE_2.md) | Passed | `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-06-30. Assignment 2.9 is deferred/non-blocking; detailed grading lives in [`../solution/MODULE_2.md`](../solution/MODULE_2.md). |
 | [`MODULE_3.md`](MODULE_3.md) | Passed | `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-07-01. Detailed grading lives in [`../solution/MODULE_3.md`](../solution/MODULE_3.md). |
+| [`MODULE_4.md`](MODULE_4.md) | Passed | `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-07-01. Detailed grading lives in [`../solution/MODULE_4.md`](../solution/MODULE_4.md). |
 
 Keep this table as the compact course progress tracker. Assignment-level feedback, pass/fail reasoning, and missing-test notes belong in the matching file under `docs/solution/`.

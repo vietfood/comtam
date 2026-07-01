@@ -1,5 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <memory>
+#include <numeric>
+#include <stdexcept>
+#include <vector>
 
 #include "comtam/core/context.h"
 #include "comtam/core/dtype.h"
@@ -8,16 +12,11 @@
 #include "comtam/utils/rng.h"
 #include "tests/support/mlx_oracle.h"
 
-#include <memory>
-#include <numeric>
-#include <stdexcept>
-#include <vector>
-
 constexpr std::size_t kSize = 100;
 
 using namespace comtam;
 
-void require_all_close(const std::vector<float> &expected, const std::vector<float> &actual,
+void require_all_close(const std::vector<float>& expected, const std::vector<float>& actual,
                        float epsilon = 1e-5F) {
     REQUIRE(actual.size() == expected.size());
 
@@ -27,14 +26,14 @@ void require_all_close(const std::vector<float> &expected, const std::vector<flo
     }
 }
 
-std::size_t numel_from_shape(const std::vector<core::ViewInt> &shape) {
+std::size_t numel_from_shape(const std::vector<core::ViewInt>& shape) {
     return static_cast<std::size_t>(
         std::reduce(shape.begin(), shape.end(), core::ViewInt{1}, std::multiplies<>()));
 }
 
-void require_binary_ops_match_mlx_oracles(const std::vector<core::ViewInt> &shape,
-                                          core::Context &context) {
-    auto &device = context.device();
+void require_binary_ops_match_mlx_oracles(const std::vector<core::ViewInt>& shape,
+                                          core::Context& context) {
+    auto& device = context.device();
     auto numel = numel_from_shape(shape);
     auto lhs = utils::generate_random_array<float>(numel, 1.0F, 2.0F);
     auto rhs = utils::generate_random_array<float>(numel, 0.5F, 1.5F);
@@ -57,7 +56,7 @@ void require_binary_ops_match_mlx_oracles(const std::vector<core::ViewInt> &shap
 
 TEST_CASE("Tensor copies host data to storage and back", "[tensor][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
     Tensor tensor(input.data(), {static_cast<core::ViewInt>(kSize)}, device);
@@ -67,7 +66,7 @@ TEST_CASE("Tensor copies host data to storage and back", "[tensor][metal]") {
 
 TEST_CASE("Tensor from_vector replaces storage contents", "[tensor][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
     Tensor tensor({static_cast<core::ViewInt>(kSize)}, device);
@@ -79,7 +78,7 @@ TEST_CASE("Tensor from_vector replaces storage contents", "[tensor][metal]") {
 
 TEST_CASE("Tensor from_vector rejects wrong element count", "[tensor][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     Tensor tensor({static_cast<core::ViewInt>(kSize)}, device);
     auto wrong_size = utils::generate_random_array<float>(kSize - 1, 0.0F, 1.0F);
@@ -89,7 +88,7 @@ TEST_CASE("Tensor from_vector rejects wrong element count", "[tensor][metal]") {
 
 TEST_CASE("Two tensor headers can share one Storage safely", "[tensor][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
     auto shape = std::vector<core::ViewInt>{static_cast<core::ViewInt>(kSize)};
@@ -111,9 +110,10 @@ TEST_CASE("Two tensor headers can share one Storage safely", "[tensor][metal]") 
     require_all_close(input, survivor->to_vector<float>(device));
 }
 
-TEST_CASE("When one Tensor write in storage, another Tensor with same storage should see it", "[tensor][metal]") {
+TEST_CASE("When one Tensor write in storage, another Tensor with same storage should see it",
+          "[tensor][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     auto shape = std::vector<core::ViewInt>{static_cast<core::ViewInt>(kSize)};
     auto storage = std::make_shared<core::Storage>(device.allocate(kSize * sizeof(float)));
@@ -148,7 +148,7 @@ TEST_CASE("Tensor binary operations match external oracles for asymmetric shapes
 
 TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     Tensor a({2, 3}, device);
     Tensor b({3, 2}, device);
@@ -161,7 +161,7 @@ TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][me
 
 TEST_CASE("Tensor binary operations reject non-contiguous inputs", "[tensor][ops][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     Tensor base({2, 3}, device);
     base.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
@@ -178,7 +178,7 @@ TEST_CASE("Tensor binary operations reject non-contiguous inputs", "[tensor][ops
 
 TEST_CASE("Tensor to_vector gathers through non-contiguous views", "[tensor][view][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
 
@@ -200,9 +200,9 @@ TEST_CASE("Tensor to_vector gathers through non-contiguous views", "[tensor][vie
 
 TEST_CASE("Tensor to_vector gathers through shrink views", "[tensor][view][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
-    std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f,
+    std::vector<float> input{0.f, 1.f, 2.f,  3.f,  4.f,  5.f,  6.f,  7.f,
                              8.f, 9.f, 10.f, 11.f, 12.f, 13.f, 14.f, 15.f};
 
     Tensor tensor({4, 4}, device);
@@ -217,7 +217,7 @@ TEST_CASE("Tensor to_vector gathers through shrink views", "[tensor][view][metal
 
 TEST_CASE("Tensor to_vector gathers through expand views", "[tensor][view][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f};
 
@@ -233,7 +233,7 @@ TEST_CASE("Tensor to_vector gathers through expand views", "[tensor][view][metal
 
 TEST_CASE("Tensor to_vector gathers through reshape views", "[tensor][view][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
 
@@ -249,15 +249,14 @@ TEST_CASE("Tensor to_vector gathers through reshape views", "[tensor][view][meta
 
 TEST_CASE("Tensor from_vector rejects non-contiguous views", "[tensor][view][metal]") {
     core::Context context;
-    auto &device = context.device();
+    auto& device = context.device();
 
     Tensor tensor({2, 3}, device);
     tensor.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
 
     auto transposed = tensor.transpose(1, 0);
 
-    REQUIRE_THROWS_AS(
-        transposed.from_vector<float>({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, device),
-        std::runtime_error);
+    REQUIRE_THROWS_AS(transposed.from_vector<float>({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, device),
+                      std::runtime_error);
     require_all_close({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, transposed.to_vector<float>(device));
 }

@@ -1,15 +1,14 @@
+#include "comtam/core/view.h"
+
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
 
-#include "comtam/core/view.h"
-
 using namespace comtam;
 
-namespace {
-std::vector<size_t> gather_offsets(const core::View &view) {
+std::vector<size_t> gather_offsets(const core::View& view) {
     std::vector<size_t> offsets;
     offsets.reserve(static_cast<size_t>(view.numel()));
     for (size_t i = 0; i < static_cast<size_t>(view.numel()); ++i) {
@@ -17,7 +16,6 @@ std::vector<size_t> gather_offsets(const core::View &view) {
     }
     return offsets;
 }
-} // namespace
 
 TEST_CASE("View constructs row-major contiguous strides", "[view][strides]") {
     SECTION("scalar view is one logical element with no strides") {
@@ -77,8 +75,7 @@ TEST_CASE("View maps logical linear indices to physical offsets", "[view][offset
     SECTION("broadcasted stride-zero dimension repeats the same storage element") {
         auto v = core::View({3, 4}, {1, 0});
 
-        REQUIRE(gather_offsets(v) ==
-                std::vector<size_t>({0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2}));
+        REQUIRE(gather_offsets(v) == std::vector<size_t>({0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2}));
     }
 
     SECTION("sliced view starts from its storage offset") {
@@ -178,8 +175,7 @@ TEST_CASE("View expands broadcast dimensions with stride zero", "[view][expand]"
         REQUIRE(y.shape == std::vector<int64_t>({3, 4}));
         REQUIRE(y.strides == std::vector<int64_t>({1, 0}));
         REQUIRE_FALSE(y.is_contiguous());
-        REQUIRE(gather_offsets(y) ==
-                std::vector<size_t>({0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2}));
+        REQUIRE(gather_offsets(y) == std::vector<size_t>({0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2}));
     }
 
     SECTION("leading broadcast dimensions are aligned from the right") {

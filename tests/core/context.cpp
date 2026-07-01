@@ -1,6 +1,6 @@
-#include <catch2/catch_test_macros.hpp>
-
 #include "comtam/core/context.h"
+
+#include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Context creates a Metal device and kernel library", "[context][metal]") {
     comtam::core::Context context;
