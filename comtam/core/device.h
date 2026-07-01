@@ -12,7 +12,7 @@
 
 
 namespace comtam::core {
-class Command;
+struct Command;
 class KernelLibrary;
 
 class Device {

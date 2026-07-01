@@ -8,6 +8,10 @@ add_library(comtam_lib STATIC
   tensor.cpp
 )
 
+target_compile_options(comtam_lib PRIVATE
+  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra -Wswitch-enum -Werror=switch-enum>
+)
+
 target_compile_definitions(comtam_lib
   PUBLIC
     COMTAM_KERNEL_DIR="${PROJECT_BINARY_DIR}/kernels"
