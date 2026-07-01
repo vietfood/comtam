@@ -1,20 +1,25 @@
 #pragma once
 
+#include <simd/vector_make.h>
+#include <simd/vector_types.h>
+#include <algorithm>
 #include <fstream>
-#include <iostream>
 #include <string>
+#include <vector>
+
+#include <fmt/format.h>
 
 #include "Foundation/NSError.hpp"
 
 namespace comtam::utils {
 inline std::string ns_error_message(NS::Error* error) {
     if (error == nullptr) {
-        return "[ERROR] Unknown Metal error";
+        return "Unknown Metal error";
     }
 
     NS::String* description = error->localizedDescription();
     if (description == nullptr) {
-        return "[ERROR] Unknown Metal error";
+        return "Unknown Metal error";
     }
 
     return description->utf8String();
@@ -42,19 +47,22 @@ inline std::string read_file(const std::string& path) {
     return "";
 }
 
-// pretty-print array
 template <typename T>
 void print_array(T* arr, std::size_t size, std::string_view label = "") {
     if (!label.empty()) {
-        std::cout << label << ": ";
+        fmt::print("{}: [", label);
+    } else {
+        fmt::print("[");
     }
-    std::cout << "[";
     for (std::size_t i = 0; i < size; ++i) {
-        std::cout << arr[i];
-        if (i + 1 < size) {
-            std::cout << ", ";
-        }
+        fmt::print("{}{}", arr[i], (i + 1 < size) ? ", " : "");
     }
-    std::cout << "]\n";
+    fmt::print("]\n");
+}
+
+inline std::array<int64_t, 4> arr4_from_vec(const std::vector<int64_t>& vec) {
+    std::array<int64_t, 4> temp = {-1, -1, -1, -1};
+    std::copy_n(vec.begin(), std::min(vec.size(), size_t(4)), temp.begin());
+    return temp;
 }
 }  // namespace comtam::utils

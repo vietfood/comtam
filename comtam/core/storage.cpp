@@ -1,10 +1,10 @@
 #include "comtam/core/storage.h"
 
-#include <iostream>
 #include <string>
 
 #include "Metal/MTLDevice.hpp"
 #include "Metal/MTLResource.hpp"
+#include "comtam/macros/log.h"
 #include "comtam/utils/common.h"
 
 using namespace comtam::core;
@@ -13,7 +13,7 @@ Storage::Storage(size_t bytes, MTL::Device* device) : size_(bytes) {
     buffer_ = NS::TransferPtr(device->newBuffer(bytes, MTL::ResourceStorageModeShared));
 
     if (!buffer_) {
-        std::cerr << "[ERROR] Failed to allocate buffer of size " << bytes << "\n";
+        COMTAM_LOG_ERR("Failed to allocate buffer of size {}", bytes);
         throw std::bad_alloc();
     }
 }

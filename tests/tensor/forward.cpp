@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "comtam/core/context.h"
+#include "comtam/core/view.h"
 #include "comtam/tensor.h"
 #include "comtam/utils/rng.h"
 #include "tests/support/forward_compare.h"
@@ -74,6 +75,67 @@ TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][mlx][metal]")
             require_op_matches_oracle(
                 context, a.dtype(), shape, [&]() { return op.comtam_op(a, b, context); },
                 [&]() { return mlx_test::binary_float32(lhs, rhs, shape, op.mlx_op); },
+                ValueMode::Approximate);
+        }
+    }
+}
+
+TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][metal][broadcast]") {
+    core::Context context;
+    auto& device = context.device();
+
+    struct OpCase {
+        mlx_test::BinaryOp mlx_op;
+        Tensor (*comtam_op)(const Tensor&, const Tensor&, core::Context&);
+    };
+
+    const OpCase op_cases[] = {
+        {mlx_add, Tensor::add},
+        {mlx_subtract, Tensor::sub},
+        {mlx_multiply, Tensor::mul},
+        {mlx_divide, Tensor::div},
+    };
+
+    struct BroadcastCase {
+        std::vector<core::ViewInt> lhs_shape;
+        std::vector<core::ViewInt> rhs_shape;
+    };
+
+    const BroadcastCase broadcast_cases[] = {
+        {{4, 3}, {3}},
+        {{3}, {4, 3}},
+        {{2, 1, 4}, {3, 1}},
+        {{3, 1}, {2, 1, 4}},
+        {{3, 4}, {3, 1}},
+        {{3, 4}, {1, 4}},
+        {{4, 1}, {1, 3}},
+        {{1}, {3, 4}},
+    };
+
+    for (const auto& op : op_cases) {
+        for (const auto& broadcast_case : broadcast_cases) {
+            CAPTURE(op.mlx_op);
+            CAPTURE(broadcast_case.lhs_shape);
+            CAPTURE(broadcast_case.rhs_shape);
+
+            const auto expected_shape = core::View::broadcast_shape(
+                core::View(broadcast_case.lhs_shape), core::View(broadcast_case.rhs_shape));
+
+            const auto lhs_numel = comtam::tests::forward_compare::numel_from_shape(broadcast_case.lhs_shape);
+            const auto rhs_numel = comtam::tests::forward_compare::numel_from_shape(broadcast_case.rhs_shape);
+
+            auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
+            auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
+            Tensor a(lhs.data(), broadcast_case.lhs_shape, device);
+            Tensor b(rhs.data(), broadcast_case.rhs_shape, device);
+
+            require_op_matches_oracle(
+                context, a.dtype(), expected_shape,
+                [&]() { return op.comtam_op(a, b, context); },
+                [&]() {
+                    return mlx_test::binary_broadcast_float32(lhs, broadcast_case.lhs_shape, rhs,
+                                                              broadcast_case.rhs_shape, op.mlx_op);
+                },
                 ValueMode::Approximate);
         }
     }

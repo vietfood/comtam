@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstddef>
-#include <stdexcept>
 #include <unordered_map>
+
+#include "comtam/macros/log.h"
 
 namespace comtam::core {
 enum class DType { Float32 };
@@ -18,7 +19,7 @@ static std::unordered_map<DType, size_t> dtype_size_map = {{DType::Float32, size
             return __VA_ARGS__();                                                                 \
         }                                                                                         \
         default:                                                                                  \
-            throw std::runtime_error("unsupported dtype");                                        \
+            COMTAM_THROW_ERROR(std::runtime_error, "unsupported dtype");                          \
         }                                                                                         \
     }()
 // clang-format on

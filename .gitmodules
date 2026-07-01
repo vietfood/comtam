@@ -13,3 +13,6 @@
 [submodule "vendor/mlx-c"]
 	path = vendor/mlx-c
 	url = https://github.com/ml-explore/mlx-c.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git

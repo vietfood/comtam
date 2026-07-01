@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -13,6 +12,7 @@
 #include "comtam/core/ops.h"
 #include "comtam/core/storage.h"
 #include "comtam/core/view.h"
+#include "comtam/macros/log.h"
 
 namespace comtam {
 class Tensor {
@@ -26,7 +26,7 @@ class Tensor {
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             if constexpr (!std::is_same_v<T, scalar_t>) {
-                throw std::runtime_error("DType didn't match with input data");
+                COMTAM_THROW_ERROR(std::runtime_error, "DType didn't match with input data");
             }
 
             // create a storage from device first
@@ -71,9 +71,10 @@ class Tensor {
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             // we must ensure the storage byte match the Tensor
-            if (sizeof(scalar_t) * static_cast<size_t>(view_.numel()) != storage->size()) {
-                throw std::runtime_error("[ERROR] Storage size doesn't match dtype and shape");
-            }
+            COMTAM_CHECK_AND_THROW(sizeof(scalar_t) * static_cast<size_t>(view_.numel()) ==
+                                       storage->size(),
+                                   std::runtime_error,
+                                   "Storage size doesn't match dtype and shape");
             // then we only need to set target
             storage_ = storage;
         });
@@ -96,25 +97,20 @@ class Tensor {
     void from_vector(const std::vector<T>& data, core::Device& device) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             if constexpr (!std::is_same_v<T, scalar_t>) {
-                throw std::runtime_error("dtype of vector didn't match with input Tensor");
+                COMTAM_THROW_ERROR(std::runtime_error,
+                                   "dtype of vector didn't match with input Tensor");
             }
 
-            // we assume that this tensor is allocated
-            if (!storage_) {
-                throw std::runtime_error("Tensor::from_vector: storage is not allocated");
-            }
+            COMTAM_CHECK_AND_THROW(storage_, std::runtime_error,
+                                   "Tensor::from_vector: storage is not allocated");
 
             auto numel = static_cast<size_t>(view_.numel());
-            if (data.size() != numel) {
-                throw std::runtime_error(
-                    "Tensor::from_vector: data size does not match tensor size");
-            }
+            COMTAM_CHECK_AND_THROW(data.size() == numel, std::runtime_error,
+                                   "Tensor::from_vector: data size does not match tensor size");
 
-            // from vector should reject non-contiguous view
-            if (!view_.is_contiguous()) {
-                throw std::runtime_error(
-                    "Tensor::from_vector: non-contiguous tensor writes are not supported");
-            }
+            COMTAM_CHECK_AND_THROW(view_.is_contiguous(), std::runtime_error,
+                                   "Tensor::from_vector: non-contiguous tensor writes are not "
+                                   "supported");
 
             device.copy<scalar_t>(data.data(), data.size(), *storage_.get());
         });
@@ -131,13 +127,12 @@ class Tensor {
     std::vector<T> to_vector(core::Device&) const {
         return COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             if constexpr (!std::is_same_v<T, scalar_t>) {
-                throw std::runtime_error("dtype of vector didn't match with input Tensor");
+                COMTAM_THROW_ERROR(std::runtime_error,
+                                   "dtype of vector didn't match with input Tensor");
             }
 
-            // we assume that this tensor is allocated
-            if (!storage_) {
-                throw std::runtime_error("Tensor::to_vector: storage is not allocated");
-            }
+            COMTAM_CHECK_AND_THROW(storage_, std::runtime_error,
+                                   "Tensor::to_vector: storage is not allocated");
 
             std::vector<scalar_t> result(static_cast<size_t>(view_.numel()));
             // instead of copy, we must gather the data for "the correct shape"
@@ -157,11 +152,11 @@ class Tensor {
     core::DType dtype() const { return dtype_; }
 
     // ----- View operation -----
-    Tensor permute(const std::vector<int64_t>& new_axis);
-    Tensor transpose(int64_t a, int64_t b);
-    Tensor shrink(const std::vector<std::pair<int64_t, int64_t>>& limits);
-    Tensor expand(const std::vector<int64_t>& new_shape);
-    Tensor reshape(const std::vector<int64_t>& new_shape);
+    Tensor permute(const std::vector<int64_t>& new_axis) const;
+    Tensor transpose(int64_t a, int64_t b) const;
+    Tensor shrink(const std::vector<std::pair<int64_t, int64_t>>& limits) const;
+    Tensor expand(const std::vector<int64_t>& new_shape) const;
+    Tensor reshape(const std::vector<int64_t>& new_shape) const;
 
     // ----- Binary operation -----
     static Tensor binop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx);

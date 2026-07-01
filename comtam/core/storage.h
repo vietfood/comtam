@@ -1,12 +1,13 @@
 #pragma once
 
 #include <cstddef>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLBuffer.hpp"
+
+#include "comtam/macros/log.h"
 
 namespace comtam::core {
 class Storage {
@@ -36,9 +37,8 @@ class Storage {
     template <typename T>
     T at(size_t index) const {
         const size_t byte_offset = index * sizeof(T);
-        if (byte_offset + sizeof(T) > size_) {
-            throw std::runtime_error("[ERROR] Storage index out of bounds");
-        }
+        COMTAM_CHECK_AND_THROW(byte_offset + sizeof(T) <= size_, std::runtime_error,
+                               "Storage index out of bounds");
         return static_cast<const T*>(buffer_->contents())[index];
     }
 

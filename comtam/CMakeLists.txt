@@ -1,36 +1,63 @@
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(COMTAM_DEBUG_1 "comtam: enable INFO logs" OFF)
+option(COMTAM_DEBUG_2 "comtam: enable DEBUG logs" OFF)
+option(COMTAM_DEBUG_3 "comtam: enable TRACE logs" OFF)
+
+set(COMTAM_DEBUG_DEFINITIONS)
+if(COMTAM_DEBUG_1)
+  message(STATUS "comtam: debug level 1 (INFO)")
+  list(APPEND COMTAM_DEBUG_DEFINITIONS COMTAM_DEBUG_1)
+endif()
+if(COMTAM_DEBUG_2)
+  message(STATUS "comtam: debug level 2 (DEBUG)")
+  list(APPEND COMTAM_DEBUG_DEFINITIONS COMTAM_DEBUG_2)
+endif()
+if(COMTAM_DEBUG_3)
+  message(STATUS "comtam: debug level 3 (TRACE)")
+  list(APPEND COMTAM_DEBUG_DEFINITIONS COMTAM_DEBUG_3)
+endif()
+
 add_library(comtam_lib STATIC
   core/context.cpp
   core/kernel.cpp
   core/storage.cpp
   core/device.cpp
+  core/view.cpp
   tensor.cpp
 )
 
 target_compile_options(comtam_lib PRIVATE
-  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra -Wswitch-enum -Werror=switch-enum>
+  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra -Wswitch-enum>
 )
 
 target_compile_definitions(comtam_lib
   PUBLIC
     COMTAM_KERNEL_DIR="${PROJECT_BINARY_DIR}/kernels"
+    ${COMTAM_DEBUG_DEFINITIONS}
 )
 
 target_include_directories(comtam_lib
   PUBLIC
     ${PROJECT_SOURCE_DIR}
+  SYSTEM PUBLIC
+    ${CMAKE_SOURCE_DIR}/vendor/fmt/include
 )
 
 target_compile_features(comtam_lib PUBLIC cxx_std_20)
 
 target_link_libraries(comtam_lib
   PUBLIC
+    fmt::fmt-header-only
     metal_cpp
 )
 
 file(GLOB COMTAM_METAL_KERNELS CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/kernels/*.metal
+)
+
+file(GLOB COMTAM_METAL_HEADERS CONFIGURE_DEPENDS
+  ${CMAKE_CURRENT_SOURCE_DIR}/kernels/*.h
 )
 
 if(COMTAM_METAL_KERNELS)
@@ -43,7 +70,7 @@ if(COMTAM_METAL_KERNELS)
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       ${CMAKE_CURRENT_SOURCE_DIR}/kernels
       ${PROJECT_BINARY_DIR}/kernels
-    DEPENDS ${COMTAM_METAL_KERNELS}
+    DEPENDS ${COMTAM_METAL_KERNELS} ${COMTAM_METAL_HEADERS}
     VERBATIM
   )
 
@@ -65,7 +92,7 @@ if(COMTAM_BUILD_METALLIB AND COMTAM_METAL_KERNELS)
       OUTPUT ${air_file}
       COMMAND ${CMAKE_COMMAND} -E make_directory ${COMTAM_KERNEL_BUILD_DIR}
       COMMAND ${XCRUN_EXECUTABLE} -sdk macosx metal -c ${kernel} -o ${air_file}
-      DEPENDS ${kernel}
+      DEPENDS ${kernel} ${COMTAM_METAL_HEADERS}
       VERBATIM
     )
 

@@ -145,6 +145,20 @@ inline std::vector<float> binary_float32(const std::vector<float>& lhs,
     return to_vector_float32(result, stream);
 }
 
+inline std::vector<float> binary_broadcast_float32(const std::vector<float>& lhs,
+                                                   const std::vector<core::ViewInt>& lhs_shape,
+                                                   const std::vector<float>& rhs,
+                                                   const std::vector<core::ViewInt>& rhs_shape,
+                                                   BinaryOp op) {
+    Stream stream;
+    auto a = Array::from_float32(lhs, lhs_shape);
+    auto b = Array::from_float32(rhs, rhs_shape);
+    Array result;
+
+    check(op(result.out_ptr(), a.get(), b.get(), stream.get()), "binary broadcast op");
+    return to_vector_float32(result, stream);
+}
+
 inline std::vector<float> transpose_float32(const std::vector<float>& data,
                                             const std::vector<core::ViewInt>& shape,
                                             const std::vector<int>& axes) {

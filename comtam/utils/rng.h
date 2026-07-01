@@ -2,11 +2,11 @@
 
 #include <algorithm>
 #include <concepts>
-#include <iostream>
 #include <random>
 #include <ranges>
-#include <stdexcept>
 #include <vector>
+
+#include "comtam/macros/log.h"
 
 namespace comtam::utils {
 inline std::mt19937& rng() {
@@ -22,9 +22,7 @@ inline std::mt19937& rng() {
  */
 template <std::integral T>
 std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
-    if (lo > hi) {
-        throw std::invalid_argument("lo must be <= hi");
-    }
+    COMTAM_CHECK_AND_THROW(lo <= hi, std::invalid_argument, "lo must be <= hi");
     std::uniform_int_distribution<T> dist{lo, hi};
     std::vector<T> out(n);
     std::ranges::generate(out, [&] { return dist(rng()); });
@@ -33,9 +31,7 @@ std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
 
 template <std::floating_point T>
 std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
-    if (lo > hi) {
-        throw std::invalid_argument("lo must be <= hi");
-    }
+    COMTAM_CHECK_AND_THROW(lo <= hi, std::invalid_argument, "lo must be <= hi");
     std::uniform_real_distribution<T> dist{lo, hi};
     std::vector<T> out(n);
     std::ranges::generate(out, [&] { return dist(rng()); });

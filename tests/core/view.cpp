@@ -222,3 +222,33 @@ TEST_CASE("View reshapes contiguous views and rejects unsupported reshapes", "[v
         REQUIRE_THROWS_AS(transposed.reshape({6}), std::invalid_argument);
     }
 }
+
+TEST_CASE("View broadcast shape", "[view][broadcast]") {
+    SECTION("non-compatible shape between two views") {
+        SECTION("(3, 1) and (2, 2, 4)") {
+            auto v = core::View({3, 1});
+            auto y = core::View({2, 2, 4});
+            REQUIRE_THROWS(core::View::broadcast_shape(v, y));
+        }
+        SECTION("(2, 3) and (4, 3)") {
+            auto v = core::View({2, 3});
+            auto y = core::View({4, 3});
+            REQUIRE_THROWS(core::View::broadcast_shape(v, y));
+        }
+    }
+
+    SECTION("compatible view return broadcast shape") {
+        SECTION("(3, 1) and (2, 1, 4) => (2, 3, 4") {
+            auto v = core::View({3, 1});
+            auto y = core::View({2, 1, 4});
+            auto res = core::View::broadcast_shape(v, y);
+            REQUIRE(res == std::vector<int64_t>({2, 3, 4}));
+        }
+        SECTION("(3,) and (4, 3) -> (4, 3)") {
+            auto v = core::View({3});
+            auto y = core::View({4, 3});
+            auto res = core::View::broadcast_shape(v, y);
+            REQUIRE(res == std::vector<int64_t>({4, 3}));
+        }
+    }
+}
