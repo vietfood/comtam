@@ -121,6 +121,4 @@ Reference material:
 | [`MODULE_2.md`](MODULE_2.md) | Passed | `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-06-30. Assignment 2.9 is deferred/non-blocking; detailed grading lives in [`../solution/MODULE_2.md`](../solution/MODULE_2.md). |
 | [`MODULE_3.md`](MODULE_3.md) | Passed | `cmake --build build`; `ctest --test-dir build --output-on-failure` | Verified on 2026-07-01. Detailed grading lives in [`../solution/MODULE_3.md`](../solution/MODULE_3.md). |
 
-Keep this table as the compact course progress tracker. Assignment-level
-feedback, pass/fail reasoning, and missing-test notes belong in the matching
-file under `docs/solution/`.
+Keep this table as the compact course progress tracker. Assignment-level feedback, pass/fail reasoning, and missing-test notes belong in the matching file under `docs/solution/`.
