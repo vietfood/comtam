@@ -9,6 +9,7 @@
 #include "comtam/utils/rng.h"
 
 #include <memory>
+#include <numeric>
 #include <stdexcept>
 #include <vector>
 
@@ -24,6 +25,36 @@ void require_all_close(const std::vector<float> &expected, const std::vector<flo
         CAPTURE(i);
         REQUIRE_THAT(actual[i], Catch::Matchers::WithinAbs(expected[i], epsilon));
     }
+}
+
+std::size_t numel_from_shape(const std::vector<core::ViewInt> &shape) {
+    return static_cast<std::size_t>(
+        std::reduce(shape.begin(), shape.end(), core::ViewInt{1}, std::multiplies<>()));
+}
+
+void require_binary_ops_match_cpu_oracles(const std::vector<core::ViewInt> &shape,
+                                          core::Context &context) {
+    auto &device = context.device();
+    auto numel = numel_from_shape(shape);
+    auto lhs = utils::generate_random_array<float>(numel, 1.0F, 2.0F);
+    auto rhs = utils::generate_random_array<float>(numel, 0.5F, 1.5F);
+
+    Tensor a(lhs.data(), shape, device);
+    Tensor b(rhs.data(), shape, device);
+
+    std::vector<float> expected(numel);
+
+    utils::add(lhs.data(), rhs.data(), expected.data(), expected.size());
+    require_all_close(expected, Tensor::add(a, b, context).to_vector<float>(device));
+
+    utils::sub(lhs.data(), rhs.data(), expected.data(), expected.size());
+    require_all_close(expected, Tensor::sub(a, b, context).to_vector<float>(device));
+
+    utils::mul(lhs.data(), rhs.data(), expected.data(), expected.size());
+    require_all_close(expected, Tensor::mul(a, b, context).to_vector<float>(device));
+
+    utils::div(lhs.data(), rhs.data(), expected.data(), expected.size());
+    require_all_close(expected, Tensor::div(a, b, context).to_vector<float>(device));
 }
 
 TEST_CASE("Tensor copies host data to storage and back", "[tensor][metal]") {
@@ -100,23 +131,51 @@ TEST_CASE("When one Tensor write in storage, another Tensor with same storage sh
 /*
  * Operation
  */
-TEST_CASE("Tensor add matches CPU oracle for same-shape vectors", "[tensor][ops][metal]") {
+TEST_CASE("Tensor binary operations match CPU oracles for asymmetric shapes",
+          "[tensor][ops][metal]") {
+    core::Context context;
+
+    SECTION("2x3") {
+        require_binary_ops_match_cpu_oracles({2, 3}, context);
+    }
+
+    SECTION("3x4") {
+        require_binary_ops_match_cpu_oracles({3, 4}, context);
+    }
+
+    SECTION("2x3x4") {
+        require_binary_ops_match_cpu_oracles({2, 3, 4}, context);
+    }
+}
+
+TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][metal]") {
     core::Context context;
     auto &device = context.device();
-    auto &kernels = context.kernels();
 
-    auto lhs = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
-    auto rhs = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
+    Tensor a({2, 3}, device);
+    Tensor b({3, 2}, device);
 
-    Tensor a(lhs.data(), {static_cast<core::ViewInt>(kSize)}, device);
-    Tensor b(rhs.data(), {static_cast<core::ViewInt>(kSize)}, device);
+    REQUIRE_THROWS_AS(Tensor::add(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::sub(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::mul(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::div(a, b, context), std::runtime_error);
+}
 
-    std::vector<float> expected(kSize);
-    utils::add(lhs.data(), rhs.data(), expected.data(), expected.size());
+TEST_CASE("Tensor binary operations reject non-contiguous inputs", "[tensor][ops][metal]") {
+    core::Context context;
+    auto &device = context.device();
 
-    Tensor result = Tensor::add(a, b, device, kernels);
+    Tensor base({2, 3}, device);
+    base.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
 
-    require_all_close(expected, result.to_vector<float>(device));
+    auto non_contiguous = base.transpose(1, 0);
+    Tensor contiguous({3, 2}, device);
+    contiguous.from_vector<float>({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, device);
+
+    REQUIRE_THROWS_AS(Tensor::add(non_contiguous, contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::sub(contiguous, non_contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::mul(non_contiguous, contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(Tensor::div(contiguous, non_contiguous, context), std::runtime_error);
 }
 
 TEST_CASE("Tensor to_vector gathers through non-contiguous views", "[tensor][view][metal]") {
