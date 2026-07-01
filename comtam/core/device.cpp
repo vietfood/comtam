@@ -35,7 +35,7 @@ void Device::submit(const Command& command, KernelLibrary& kernels) {
     auto pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
 
     // get pipeline function
-    auto* pipeline = kernels.get(command.op);
+    auto* pipeline = kernels.get(command.kernel);
 
     // create a command buffer to hold command
     auto* command_buffer = command_queue_->commandBuffer();
@@ -53,6 +53,7 @@ void Device::submit(const Command& command, KernelLibrary& kernels) {
     encoder->setBuffer(command.a->ptr(), 0, 0);
     encoder->setBuffer(command.b->ptr(), 0, 1);
     encoder->setBuffer(command.out->ptr(), 0, 2);
+    encoder->setBytes(&command.elements, sizeof(command.elements), 3);
 
     auto w = pipeline->threadExecutionWidth();
     MTL::Size threads_per_group = MTL::Size(w, 1, 1);

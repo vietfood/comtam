@@ -23,6 +23,9 @@ struct View {
     // for contiguous check
     ViewVector ref_strides;
 
+    // it should compare from shape -> strides -> offset
+    bool operator==(const View& other) const = default;
+
     // --- Constructor ---
     View(const ViewVector &shape, ViewInt offset = 0)
         : shape(shape), strides(shape.size(), 1), offset(offset), ref_strides(shape.size(), 1) {

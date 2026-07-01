@@ -12,12 +12,11 @@
 
 namespace comtam::core {
 
-
 class KernelLibrary {
 public:
     KernelLibrary(MTL::Device* device, std::filesystem::path kernel_dir);
 
-    MTL::ComputePipelineState* get(const Op& op);
+    MTL::ComputePipelineState* get(const Kernel& kernel);
 
 private:
     // kernel will cache its own Device

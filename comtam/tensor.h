@@ -8,16 +8,13 @@
 #include <utility>
 #include <vector>
 
-#include "comtam/core/device.h"
+#include "comtam/core/context.h"
 #include "comtam/core/dtype.h"
+#include "comtam/core/ops.h"
 #include "comtam/core/storage.h"
 #include "comtam/core/view.h"
 
 namespace comtam {
-namespace core {
-class KernelLibrary;
-} // namespace core
-
 class Tensor {
 public:
     /**
@@ -169,8 +166,11 @@ public:
     Tensor reshape(const std::vector<int64_t> &new_shape);
 
     // ----- Binary operation -----
-    static Tensor add(const Tensor &a, const Tensor &b, core::Device &device,
-                      core::KernelLibrary &kernels);
+    static Tensor binop(const Tensor &a, const Tensor &b, const core::Op& op, core::Context& ctx);
+    static Tensor add(const Tensor &a, const Tensor &b, core::Context& ctx);
+    static Tensor sub(const Tensor &a, const Tensor &b, core::Context& ctx);
+    static Tensor mul(const Tensor &a, const Tensor &b, core::Context& ctx);
+    static Tensor div(const Tensor &a, const Tensor &b, core::Context& ctx);
 
 private:
     core::DType dtype_;

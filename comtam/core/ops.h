@@ -1,7 +1,8 @@
 #pragma once
 
-#include <unordered_map>
+#include "comtam/core/dtype.h"
 #include "comtam/core/storage.h"
+#include <stdexcept>
 #include <string>
 
 namespace comtam::core {
@@ -13,26 +14,45 @@ enum class Op {
     DIV,
 };
 
-// for kernel name lookup
-static std::unordered_map<Op, std::string> op_to_kernel_name = {
-    {Op::ADD, "add"},
-    {Op::SUB, "sub"},
-    {Op::MUL, "mul"},
-    {Op::DIV, "div"},
+inline std::string op2kernel(const Op& op) {
+    switch (op) {
+        case Op::ADD:
+            return "add";
+        case Op::SUB:
+            return "sub";
+        case Op::MUL:
+            return "mul";
+        case Op::DIV:
+            return "div";
+    }
+    throw std::runtime_error("op isn't supported by kernel");
+}
+
+inline std::string dtype2kernel(const DType& dtype) {
+    switch (dtype) {
+        case DType::Float32:
+            return "fp32";
+    }
+    throw std::runtime_error("dtype isn't supported by kernel");
+}
+
+// a kernel is represented by an op and an dtype
+struct Kernel {
+    Op op;
+    DType dtype;
 };
 
 // A command will have
-// - an operation (Op)
+// - a kernel  (Op + DType)
 // - two input Storage pointers (a, b)
 // - an output Storage pointer (out)
 // - the number of elements to calculate threadgroup
 // Warning: we assume this is BinaryCommand
 struct Command {
-    Op op;
-    Storage* a;
-    Storage* b;
-    Storage* out;
+    Kernel kernel;
+    Storage *a;
+    Storage *b;
+    Storage *out;
     size_t elements;
 };
-
-}
+} // namespace comtam::core
