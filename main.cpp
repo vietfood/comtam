@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "comtam/core/context.h"
+#include "comtam/macros/log.h"
 #include "comtam/utils/rng.h"
 
 #include "comtam/tensor.h"
@@ -12,9 +13,8 @@ using namespace comtam;
 
 inline void sanity_check(const std::vector<float>& A, const std::vector<float>& B) {
     for (int i = 0; i < A.size(); ++i) {
-        if (std::abs(A[i] - B[i]) > 1e-5) {
-            throw std::runtime_error("[ERROR] Sanity check failed");
-        }
+        COMTAM_CHECK_AND_THROW(std::abs(A[i] - B[i]) <= 1e-5, std::runtime_error,
+                               "Sanity check failed at index {}", i);
     }
 }
 
