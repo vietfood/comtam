@@ -1,5 +1,7 @@
 #include "comtam/tensor.h"
 
+#include <stdexcept>
+
 #include "comtam/core/context.h"
 #include "comtam/core/ops.h"
 #include "comtam/core/view.h"
@@ -9,7 +11,7 @@
 using namespace comtam;
 
 // ----- Binary operation -----
-Tensor Tensor::binop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx) {
+Tensor Tensor::bop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx) {
     auto& device = ctx.device();
     auto& kernels = ctx.kernels();
 
@@ -45,25 +47,61 @@ Tensor Tensor::binop(const Tensor& a, const Tensor& b, const core::Op& op, core:
                      utils::format_view_info(cmd.a.view), utils::format_view_info(cmd.b.view),
                      out.storage_->size());
 
-    device.submit(cmd, kernels);
+    device.submit_bop(cmd, kernels);
 
     return out;
 }
 
 Tensor Tensor::add(const Tensor& a, const Tensor& b, core::Context& ctx) {
-    return Tensor::binop(a, b, core::Op::ADD, ctx);
+    return Tensor::bop(a, b, core::Op::ADD, ctx);
 }
 
 Tensor Tensor::sub(const Tensor& a, const Tensor& b, core::Context& ctx) {
-    return Tensor::binop(a, b, core::Op::SUB, ctx);
+    return Tensor::bop(a, b, core::Op::SUB, ctx);
 }
 
 Tensor Tensor::mul(const Tensor& a, const Tensor& b, core::Context& ctx) {
-    return Tensor::binop(a, b, core::Op::MUL, ctx);
+    return Tensor::bop(a, b, core::Op::MUL, ctx);
 }
 
 Tensor Tensor::div(const Tensor& a, const Tensor& b, core::Context& ctx) {
-    return Tensor::binop(a, b, core::Op::DIV, ctx);
+    return Tensor::bop(a, b, core::Op::DIV, ctx);
+}
+
+// ----- Matmul -----
+Tensor Tensor::matmul(const Tensor& a, const Tensor& b, core::Context& ctx) {
+    auto& device = ctx.device();
+    auto& kernels = ctx.kernels();
+
+    COMTAM_CHECK_AND_THROW(a.dtype_ == b.dtype_, std::runtime_error,
+                           "Two operands must have the same dtype");
+
+    COMTAM_CHECK_AND_THROW(a.shape().size() == 2 && b.shape().size() == 2, std::runtime_error,
+                           "Right now, matmul only supports 2D array");
+
+    COMTAM_CHECK_AND_THROW(a.shape()[1] == b.shape()[0], std::runtime_error,
+                           "To do matmul, column of a must match with row of b");
+
+    COMTAM_LOG_DEBUG("matmul {}_{}:\na={}\nb={}\n", core::op2kernel(core::Op::MATMUL),
+                     core::dtype2kernel(a.dtype_), utils::format_view(a.view_),
+                     utils::format_view(b.view_));
+
+    Tensor out({a.shape()[0], b.shape()[1]}, device, a.dtype_);
+
+    core::Command cmd = {.kernel = {.op = core::Op::MATMUL, .dtype = a.dtype_},
+                         .a = {.storage = a.storage_.get(),
+                               .view = core::ViewInfo::from_view(a.view_)},
+                         .b = {.storage = b.storage_.get(),
+                               .view = core::ViewInfo::from_view(b.view_)},
+                         .out_buffer = out.storage_.get()};
+
+    COMTAM_LOG_DEBUG("matmul ViewInfo:\na: {}\nb: {}\nout_bytes={} (output written linearly)\n",
+                     utils::format_view_info(cmd.a.view), utils::format_view_info(cmd.b.view),
+                     out.storage_->size());
+
+    device.submit_matmul(cmd, kernels);
+
+    return out;
 }
 
 // ----- View operation -----

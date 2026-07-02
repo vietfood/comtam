@@ -14,6 +14,7 @@ kernel void add(
     constant ViewInfo& view_src1,
     uint id [[thread_position_in_grid]]
 ) {
+    // we assume M = 1 for binary kernels
     if (id >= view_src0.N) {
         return;
     }

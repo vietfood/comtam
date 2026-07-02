@@ -1,3 +1,15 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** | AI assist : Composer 2.5 (Cursor) and GPT 5.5 (Codex)                 |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #pragma once
 
 #include <cstddef>
@@ -8,6 +20,7 @@
 
 #include "comtam/core/view.h"
 #include "mlx/c/mlx.h"
+#include "mlx/c/ops.h"
 
 namespace comtam::tests::mlx_oracle {
 
@@ -156,6 +169,19 @@ inline std::vector<float> binary_broadcast_float32(const std::vector<float>& lhs
     Array result;
 
     check(op(result.out_ptr(), a.get(), b.get(), stream.get()), "binary broadcast op");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> matmul_float32(const std::vector<float>& lhs,
+                                         const std::vector<core::ViewInt>& lhs_shape,
+                                         const std::vector<float>& rhs,
+                                         const std::vector<core::ViewInt>& rhs_shape) {
+    Stream stream;
+    auto a = Array::from_float32(lhs, lhs_shape);
+    auto b = Array::from_float32(rhs, rhs_shape);
+    Array result;
+
+    check(mlx_matmul(result.out_ptr(), a.get(), b.get(), stream.get()), "matmul op");
     return to_vector_float32(result, stream);
 }
 

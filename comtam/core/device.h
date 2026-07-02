@@ -56,7 +56,8 @@ class Device {
     }
 
     // methods for command execution
-    void submit(const Command& command, KernelLibrary& kernels);
+    void submit_bop(const Command& command, KernelLibrary& kernels);
+    void submit_matmul(const Command& command, KernelLibrary& kernels);
 
    private:
     NS::SharedPtr<MTL::Device> device_;

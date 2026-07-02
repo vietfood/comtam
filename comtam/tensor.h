@@ -83,11 +83,9 @@ class Tensor {
     Tensor(const std::shared_ptr<core::Storage>& storage, const core::View& view,
            core::DType dtype = core::DType::Float32)
         : dtype_(dtype), view_(view), storage_(nullptr) {
-        COMTAM_DISPATCH_DTYPE(dtype_, [&] {
-            // A view can have a different logical numel from its aliased storage.
-            // Readback uses View::physical_offset to map logical indices to storage.
-            storage_ = storage;
-        });
+        // A view can have a different logical numel from its aliased storage.
+        // Readback uses View::physical_offset to map logical indices to storage.
+        storage_ = storage;
     }
 
     /**
@@ -159,11 +157,14 @@ class Tensor {
     Tensor reshape(const std::vector<int64_t>& new_shape) const;
 
     // ----- Binary operation -----
-    static Tensor binop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx);
+    static Tensor bop(const Tensor& a, const Tensor& b, const core::Op& op, core::Context& ctx);
     static Tensor add(const Tensor& a, const Tensor& b, core::Context& ctx);
     static Tensor sub(const Tensor& a, const Tensor& b, core::Context& ctx);
     static Tensor mul(const Tensor& a, const Tensor& b, core::Context& ctx);
     static Tensor div(const Tensor& a, const Tensor& b, core::Context& ctx);
+
+    // ----- Other operation -----
+    static Tensor matmul(const Tensor& a, const Tensor& b, core::Context& ctx);
 
    private:
     core::DType dtype_;

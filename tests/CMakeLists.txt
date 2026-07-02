@@ -1,3 +1,12 @@
+# +--( ~_~ )-------------------------------------------------------------+
+# | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+# | Licensed under the Apache License, Version 2.0                        |
+# |                                                                       |
+# | Website : https://lenguyen.vercel.app                                 |
+# | GitHub  : https://github.com/vietfood/comtam                          |
+# | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+# +--( ^_^ )-------------------------------------------------------------+
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(COMTAM_TEST_SOURCES

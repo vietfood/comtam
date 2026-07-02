@@ -1,3 +1,15 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** | AI assist : Composer 2.5 (Cursor) and GPT 5.5 (Codex)                 |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include <memory>

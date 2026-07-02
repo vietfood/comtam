@@ -6,6 +6,7 @@
 #include "comtam/core/dtype.h"
 #include "comtam/core/storage.h"
 #include "comtam/core/view.h"
+#include "comtam/macros/macros.h"
 #include "comtam/utils/common.h"
 
 namespace comtam {
@@ -19,9 +20,11 @@ enum class Op {
     SUB,
     MUL,  // this is element-wise multiplication
     DIV,
+    // Matmul
+    MATMUL
 };
 
-inline std::string op2kernel(const Op& op) {
+COMTAM_INLINE std::string op2kernel(const Op& op) {
     switch (op) {
         case Op::ADD:
             return "add";
@@ -31,11 +34,13 @@ inline std::string op2kernel(const Op& op) {
             return "mul";
         case Op::DIV:
             return "div";
+        case Op::MATMUL:
+            return "matmul";
     }
     COMTAM_THROW_ERROR(std::runtime_error, "op isn't supported by kernel");
 }
 
-inline std::string dtype2kernel(const DType& dtype) {
+COMTAM_INLINE std::string dtype2kernel(const DType& dtype) {
     switch (dtype) {
         case DType::Float32:
             return "fp32";

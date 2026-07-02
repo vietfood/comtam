@@ -13,7 +13,7 @@ struct ViewInfo {
 
 // we assume that shape and stride
 // has maximum 4 elements
-inline long physical_offset(
+inline int64_t physical_offset(
     uint linear_index,
     constant ViewInfo& view
 ) {

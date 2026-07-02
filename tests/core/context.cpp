@@ -1,3 +1,14 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #include "comtam/core/context.h"
 
 #include <catch2/catch_test_macros.hpp>

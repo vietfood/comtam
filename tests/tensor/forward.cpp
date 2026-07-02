@@ -1,3 +1,15 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** | AI assist : Composer 2.5 (Cursor) and GPT 5.5 (Codex)                 |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #include <catch2/catch_test_macros.hpp>
 #include <vector>
 
@@ -102,14 +114,8 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
     };
 
     const BroadcastCase broadcast_cases[] = {
-        {{4, 3}, {3}},
-        {{3}, {4, 3}},
-        {{2, 1, 4}, {3, 1}},
-        {{3, 1}, {2, 1, 4}},
-        {{3, 4}, {3, 1}},
-        {{3, 4}, {1, 4}},
-        {{4, 1}, {1, 3}},
-        {{1}, {3, 4}},
+        {{4, 3}, {3}},    {{3}, {4, 3}},    {{2, 1, 4}, {3, 1}}, {{3, 1}, {2, 1, 4}},
+        {{3, 4}, {3, 1}}, {{3, 4}, {1, 4}}, {{4, 1}, {1, 3}},    {{1}, {3, 4}},
     };
 
     for (const auto& op : op_cases) {
@@ -121,8 +127,10 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
             const auto expected_shape = core::View::broadcast_shape(
                 core::View(broadcast_case.lhs_shape), core::View(broadcast_case.rhs_shape));
 
-            const auto lhs_numel = comtam::tests::forward_compare::numel_from_shape(broadcast_case.lhs_shape);
-            const auto rhs_numel = comtam::tests::forward_compare::numel_from_shape(broadcast_case.rhs_shape);
+            const auto lhs_numel =
+                comtam::tests::forward_compare::numel_from_shape(broadcast_case.lhs_shape);
+            const auto rhs_numel =
+                comtam::tests::forward_compare::numel_from_shape(broadcast_case.rhs_shape);
 
             auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
             auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
@@ -130,14 +138,49 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
             Tensor b(rhs.data(), broadcast_case.rhs_shape, device);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape,
-                [&]() { return op.comtam_op(a, b, context); },
+                context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
                 [&]() {
                     return mlx_test::binary_broadcast_float32(lhs, broadcast_case.lhs_shape, rhs,
                                                               broadcast_case.rhs_shape, op.mlx_op);
                 },
                 ValueMode::Approximate);
         }
+    }
+}
+
+TEST_CASE("Forward compare vs MLX for matmul", "[forward][mlx][metal]") {
+    core::Context context;
+    auto& device = context.device();
+
+    struct MatmulCase {
+        std::vector<core::ViewInt> lhs_shape;
+        std::vector<core::ViewInt> rhs_shape;
+    };
+
+    const MatmulCase matmul_case[] = {
+        {{20, 20}, {20, 20}},
+        {{20, 1}, {1, 20}},
+    };
+
+    for (const auto& shape : matmul_case) {
+        CAPTURE(shape.lhs_shape);
+        CAPTURE(shape.rhs_shape);
+
+        const auto expected_shape = core::ViewVector({shape.lhs_shape[0], shape.rhs_shape[1]});
+
+        const auto lhs_numel = comtam::tests::forward_compare::numel_from_shape(shape.lhs_shape);
+        const auto rhs_numel = comtam::tests::forward_compare::numel_from_shape(shape.rhs_shape);
+
+        auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
+        auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
+
+        Tensor a(lhs.data(), shape.lhs_shape, device);
+        Tensor b(rhs.data(), shape.rhs_shape, device);
+
+        require_op_matches_oracle(
+            context, a.dtype(), expected_shape, [&]() { return Tensor::matmul(a, b, context); },
+            [&]() { return mlx_test::matmul_float32(lhs, shape.lhs_shape, rhs, shape.rhs_shape); },
+            ValueMode::Approximate);
     }
 }
 

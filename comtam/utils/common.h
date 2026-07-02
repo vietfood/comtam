@@ -10,9 +10,10 @@
 #include <fmt/format.h>
 
 #include "Foundation/NSError.hpp"
+#include "comtam/macros/macros.h"
 
 namespace comtam::utils {
-inline std::string ns_error_message(NS::Error* error) {
+COMTAM_INLINE std::string ns_error_message(NS::Error* error) {
     if (error == nullptr) {
         return "Unknown Metal error";
     }
@@ -27,7 +28,7 @@ inline std::string ns_error_message(NS::Error* error) {
 
 // a small read file util
 // https://stackoverflow.com/questions/6755111/read-input-files-fastest-way-possible
-inline std::string read_file(const std::string& path) {
+COMTAM_INLINE std::string read_file(const std::string& path) {
     // Open in binary mode to avoid conversion overhead
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file)
@@ -48,7 +49,7 @@ inline std::string read_file(const std::string& path) {
 }
 
 template <typename T>
-void print_array(T* arr, std::size_t size, std::string_view label = "") {
+COMTAM_INLINE void print_array(T* arr, std::size_t size, std::string_view label = "") {
     if (!label.empty()) {
         fmt::print("{}: [", label);
     } else {
@@ -60,7 +61,7 @@ void print_array(T* arr, std::size_t size, std::string_view label = "") {
     fmt::print("]\n");
 }
 
-inline std::array<int64_t, 4> arr4_from_vec(const std::vector<int64_t>& vec) {
+COMTAM_INLINE std::array<int64_t, 4> arr4_from_vec(const std::vector<int64_t>& vec) {
     std::array<int64_t, 4> temp = {-1, -1, -1, -1};
     std::copy_n(vec.begin(), std::min(vec.size(), size_t(4)), temp.begin());
     return temp;
