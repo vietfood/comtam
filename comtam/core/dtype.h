@@ -1,14 +1,22 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #pragma once
 
 #include <cstddef>
-#include <unordered_map>
 
 #include "comtam/macros/log.h"
 
 namespace comtam::core {
 enum class DType { Float32 };
-
-static std::unordered_map<DType, size_t> dtype_size_map = {{DType::Float32, sizeof(float)}};
 
 // clang-format off
 #define COMTAM_DISPATCH_DTYPE(DTYPE, ...)                                                         \

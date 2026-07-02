@@ -1,13 +1,24 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #pragma once
 
+#include <fmt/format.h>
 #include <simd/vector_make.h>
 #include <simd/vector_types.h>
+
 #include <algorithm>
 #include <fstream>
 #include <string>
 #include <vector>
-
-#include <fmt/format.h>
 
 #include "Foundation/NSError.hpp"
 #include "comtam/macros/macros.h"

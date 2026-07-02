@@ -1,3 +1,14 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #include "comtam/core/kernel.h"
 
 #include <filesystem>
@@ -20,8 +31,7 @@ KernelLibrary::KernelLibrary(MTL::Device* device, fs::path kernel_dir) : device_
 
     auto metallib_path = kernel_dir / "default.metallib";
     COMTAM_CHECK_AND_THROW(fs::exists(metallib_path) && fs::is_regular_file(metallib_path),
-                           std::runtime_error, "Missing Metal library: {}",
-                           metallib_path.string());
+                           std::runtime_error, "Missing Metal library: {}", metallib_path.string());
 
     NS::Error* error = nullptr;
     auto ns_path = NS::String::string(metallib_path.string().c_str(), NS::UTF8StringEncoding);
