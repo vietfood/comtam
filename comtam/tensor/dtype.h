@@ -15,14 +15,14 @@
 
 #include "comtam/macros/log.h"
 
-namespace comtam::core {
+namespace comtam {
 enum class DType { Float32 };
 
 // clang-format off
 #define COMTAM_DISPATCH_DTYPE(DTYPE, ...)                                                         \
     [&] {                                                                                         \
         switch (DTYPE) {                                                                          \
-        case comtam::core::DType::Float32: {                                                      \
+        case comtam::DType::Float32: {                                                            \
             using scalar_t = float;                                                               \
             return __VA_ARGS__();                                                                 \
         }                                                                                         \
@@ -32,4 +32,4 @@ enum class DType { Float32 };
     }()
 // clang-format on
 
-}  // namespace comtam::core
+}  // namespace comtam

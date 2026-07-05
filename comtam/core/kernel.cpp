@@ -17,7 +17,7 @@
 #include "Foundation/NSSharedPtr.hpp"
 #include "Foundation/NSString.hpp"
 #include "Metal/MTLDevice.hpp"
-#include "comtam/core/ops.h"
+#include "comtam/core/command.h"
 #include "comtam/macros/log.h"
 #include "comtam/utils/common.h"
 
@@ -25,7 +25,7 @@ using namespace comtam::core;
 
 namespace fs = std::filesystem;
 
-KernelLibrary::KernelLibrary(MTL::Device* device, fs::path kernel_dir) : device_(device) {
+kernel_library::kernel_library(MTL::Device* device, fs::path kernel_dir) : device_(device) {
     COMTAM_CHECK_AND_THROW(fs::exists(kernel_dir) && fs::is_directory(kernel_dir),
                            std::runtime_error, "Directory does not exist");
 
@@ -44,7 +44,7 @@ KernelLibrary::KernelLibrary(MTL::Device* device, fs::path kernel_dir) : device_
 
 // We only compile source only when we need it
 // The name here is the "function" name in kernel source
-MTL::ComputePipelineState* KernelLibrary::get(const Kernel& kernel) {
+MTL::ComputePipelineState* kernel_library::get(const kernel_desc& kernel) {
     std::string name = op2kernel(kernel.op) + "_" + dtype2kernel(kernel.dtype);
 
     if (auto it = pipeline_cache_.find(name); it != pipeline_cache_.end()) {

@@ -15,27 +15,14 @@
 
 #include <string>
 
-#include "comtam/core/dtype.h"
 #include "comtam/core/storage.h"
-#include "comtam/core/view.h"
 #include "comtam/macros/macros.h"
+#include "comtam/tensor/dtype.h"
+#include "comtam/tensor/op.h"
+#include "comtam/tensor/view.h"
 #include "comtam/utils/common.h"
 
-namespace comtam {
-// forward decleration
-class Tensor;
-
-namespace core {
-enum class Op {
-    // Binary operations
-    ADD,
-    SUB,
-    MUL,  // this is element-wise multiplication
-    DIV,
-    // Matmul
-    MATMUL
-};
-
+namespace comtam::core {
 COMTAM_INLINE std::string op2kernel(const Op& op) {
     switch (op) {
         case Op::ADD:
@@ -61,21 +48,21 @@ COMTAM_INLINE std::string dtype2kernel(const DType& dtype) {
 }
 
 // a kernel is represented by an op and an dtype
-struct Kernel {
+struct kernel_desc {
     Op op;
     DType dtype;
 };
 
 // for view and index construction in kernel
-struct ViewInfo {
+struct view_desc {
     size_t N;
     int64_t shape[4];
     int64_t strides[4];
     long offset;
     bool contiguous;
 
-    static ViewInfo from_view(const View& view) {
-        ViewInfo res;
+    static view_desc from_view(const view& view) {
+        view_desc res;
 
         res.N = static_cast<size_t>(view.numel());
         res.offset = view.offset;
@@ -94,9 +81,9 @@ struct ViewInfo {
 
 // each input will have data buffer
 // and view information
-struct InputInfo {
-    Storage* storage;
-    ViewInfo view;
+struct input_desc {
+    storage* storage;
+    view_desc view;
 };
 
 // A command will have
@@ -104,11 +91,10 @@ struct InputInfo {
 // - two input info (a, b)
 // - an output info (out)
 // Warning: we assume this is BinaryCommand
-struct Command {
-    Kernel kernel;
-    InputInfo a;
-    InputInfo b;
-    Storage* out_buffer;
+struct command_desc {
+    kernel_desc kernel;
+    input_desc a;
+    input_desc b;
+    storage* out_buffer;
 };
-}  // namespace core
-}  // namespace comtam
+}  // namespace comtam::core

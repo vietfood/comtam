@@ -19,7 +19,7 @@
 
 using namespace comtam::core;
 
-Context::Context() {
-    device_ = std::make_unique<Device>();
-    kernels_ = std::make_unique<KernelLibrary>(device_->get(), COMTAM_KERNEL_DIR);
+context::context() {
+    device_ = std::make_unique<metal_device>();
+    kernels_ = std::make_unique<kernel_library>(device_->get(), COMTAM_KERNEL_DIR);
 }

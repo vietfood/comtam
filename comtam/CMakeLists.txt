@@ -1,3 +1,12 @@
+# +--( ~_~ )-------------------------------------------------------------+
+# | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+# | Licensed under the Apache License, Version 2.0                        |
+# |                                                                       |
+# | Website : https://lenguyen.vercel.app                                 |
+# | GitHub  : https://github.com/vietfood/comtam                          |
+# | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+# +--( ^_^ )-------------------------------------------------------------+
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(COMTAM_DEBUG_1 "comtam: enable INFO logs" OFF)
@@ -23,12 +32,12 @@ add_library(comtam_lib STATIC
   core/kernel.cpp
   core/storage.cpp
   core/device.cpp
-  core/view.cpp
-  tensor.cpp
+  tensor/view.cpp
+  tensor/tensor.cpp
 )
 
 target_compile_options(comtam_lib PRIVATE
-  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra -Wswitch-enum>
+  $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra>
 )
 
 target_compile_definitions(comtam_lib

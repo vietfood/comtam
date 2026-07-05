@@ -18,9 +18,9 @@
 #include <vector>
 
 #include "comtam/core/context.h"
-#include "comtam/core/dtype.h"
+#include "comtam/tensor/dtype.h"
 #include "comtam/core/storage.h"
-#include "comtam/tensor.h"
+#include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "tests/support/mlx_oracle.h"
 
@@ -38,50 +38,49 @@ void require_all_close(const std::vector<float>& expected, const std::vector<flo
     }
 }
 
-std::size_t numel_from_shape(const std::vector<core::ViewInt>& shape) {
+std::size_t numel_from_shape(const view_vector& shape) {
     return static_cast<std::size_t>(
-        std::reduce(shape.begin(), shape.end(), core::ViewInt{1}, std::multiplies<>()));
+        std::reduce(shape.begin(), shape.end(), view_int{1}, std::multiplies<>()));
 }
 
-void require_binary_ops_match_mlx_oracles(const std::vector<core::ViewInt>& shape,
-                                          core::Context& context) {
+void require_binary_ops_match_mlx_oracles(const view_vector& shape, core::context& context) {
     auto& device = context.device();
     auto numel = numel_from_shape(shape);
     auto lhs = utils::generate_random_array<float>(numel, 1.0F, 2.0F);
     auto rhs = utils::generate_random_array<float>(numel, 0.5F, 1.5F);
 
-    Tensor a(lhs.data(), shape, device);
-    Tensor b(rhs.data(), shape, device);
+    tensor a(lhs.data(), shape, device);
+    tensor b(rhs.data(), shape, device);
 
     auto expected = tests::mlx_oracle::binary_float32(lhs, rhs, shape, mlx_add);
-    require_all_close(expected, Tensor::add(a, b, context).to_vector<float>(device));
+    require_all_close(expected, tensor::add(a, b, context).to_vector<float>(device));
 
     expected = tests::mlx_oracle::binary_float32(lhs, rhs, shape, mlx_subtract);
-    require_all_close(expected, Tensor::sub(a, b, context).to_vector<float>(device));
+    require_all_close(expected, tensor::sub(a, b, context).to_vector<float>(device));
 
     expected = tests::mlx_oracle::binary_float32(lhs, rhs, shape, mlx_multiply);
-    require_all_close(expected, Tensor::mul(a, b, context).to_vector<float>(device));
+    require_all_close(expected, tensor::mul(a, b, context).to_vector<float>(device));
 
     expected = tests::mlx_oracle::binary_float32(lhs, rhs, shape, mlx_divide);
-    require_all_close(expected, Tensor::div(a, b, context).to_vector<float>(device));
+    require_all_close(expected, tensor::div(a, b, context).to_vector<float>(device));
 }
 
 TEST_CASE("Tensor copies host data to storage and back", "[tensor][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
-    Tensor tensor(input.data(), {static_cast<core::ViewInt>(kSize)}, device);
+    tensor tensor(input.data(), {static_cast<view_int>(kSize)}, device);
 
     require_all_close(input, tensor.to_vector<float>(device));
 }
 
 TEST_CASE("Tensor from_vector replaces storage contents", "[tensor][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
-    Tensor tensor({static_cast<core::ViewInt>(kSize)}, device);
+    tensor tensor({static_cast<view_int>(kSize)}, device);
 
     tensor.from_vector(input, device);
 
@@ -89,30 +88,30 @@ TEST_CASE("Tensor from_vector replaces storage contents", "[tensor][metal]") {
 }
 
 TEST_CASE("Tensor from_vector rejects wrong element count", "[tensor][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
-    Tensor tensor({static_cast<core::ViewInt>(kSize)}, device);
+    tensor tensor({static_cast<view_int>(kSize)}, device);
     auto wrong_size = utils::generate_random_array<float>(kSize - 1, 0.0F, 1.0F);
 
     REQUIRE_THROWS_AS(tensor.from_vector(wrong_size, device), std::runtime_error);
 }
 
 TEST_CASE("Two tensor headers can share one Storage safely", "[tensor][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     auto input = utils::generate_random_array<float>(kSize, 0.0F, 1.0F);
-    auto shape = std::vector<core::ViewInt>{static_cast<core::ViewInt>(kSize)};
+    auto shape = std::vector<view_int>{static_cast<view_int>(kSize)};
 
-    std::unique_ptr<Tensor> survivor = nullptr;
+    std::unique_ptr<tensor> survivor = nullptr;
 
     {
-        auto storage = std::make_shared<core::Storage>(device.allocate(kSize * sizeof(float)));
+        auto storage = std::make_shared<core::storage>(device.allocate(kSize * sizeof(float)));
         device.copy(input.data(), input.size(), *storage);
 
-        Tensor a(storage, shape, core::DType::Float32);
-        survivor = std::make_unique<Tensor>(storage, shape, core::DType::Float32);
+        tensor a(storage, shape, DType::Float32);
+        survivor = std::make_unique<tensor>(storage, shape, DType::Float32);
 
         require_all_close(input, a.to_vector<float>(device));
         require_all_close(input, survivor->to_vector<float>(device));
@@ -124,14 +123,14 @@ TEST_CASE("Two tensor headers can share one Storage safely", "[tensor][metal]") 
 
 TEST_CASE("When one Tensor write in storage, another Tensor with same storage should see it",
           "[tensor][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
-    auto shape = std::vector<core::ViewInt>{static_cast<core::ViewInt>(kSize)};
-    auto storage = std::make_shared<core::Storage>(device.allocate(kSize * sizeof(float)));
+    auto shape = view_vector{static_cast<view_int>(kSize)};
+    auto storage = std::make_shared<core::storage>(device.allocate(kSize * sizeof(float)));
 
-    Tensor a(storage, shape, core::DType::Float32);
-    Tensor b(storage, shape, core::DType::Float32);
+    tensor a(storage, shape, DType::Float32);
+    tensor b(storage, shape, DType::Float32);
 
     auto replacement = utils::generate_random_array<float>(kSize, 1.0F, 2.0F);
     a.from_vector(replacement, device);
@@ -143,7 +142,7 @@ TEST_CASE("When one Tensor write in storage, another Tensor with same storage sh
  */
 TEST_CASE("Tensor binary operations match external oracles for asymmetric shapes",
           "[tensor][ops][metal]") {
-    core::Context context;
+    core::context context;
 
     SECTION("2x3") {
         require_binary_ops_match_mlx_oracles({2, 3}, context);
@@ -159,44 +158,44 @@ TEST_CASE("Tensor binary operations match external oracles for asymmetric shapes
 }
 
 TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
-    Tensor a({2, 3}, device);
-    Tensor b({3, 2}, device);
+    tensor a({2, 3}, device);
+    tensor b({3, 2}, device);
 
-    REQUIRE_THROWS_AS(Tensor::add(a, b, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::sub(a, b, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::mul(a, b, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::div(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sub(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mul(a, b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(a, b, context), std::runtime_error);
 }
 
 TEST_CASE("Tensor binary operations reject non-contiguous inputs", "[tensor][ops][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
-    Tensor base({2, 3}, device);
+    tensor base({2, 3}, device);
     base.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
 
     auto non_contiguous = base.transpose(1, 0);
-    Tensor contiguous({3, 2}, device);
+    tensor contiguous({3, 2}, device);
     contiguous.from_vector<float>({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, device);
 
-    REQUIRE_THROWS_AS(Tensor::add(non_contiguous, contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::sub(contiguous, non_contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::mul(non_contiguous, contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(Tensor::div(contiguous, non_contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(non_contiguous, contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sub(contiguous, non_contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mul(non_contiguous, contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(contiguous, non_contiguous, context), std::runtime_error);
 }
 
 TEST_CASE("Tensor to_vector gathers through non-contiguous views", "[tensor][view][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
 
     // [[0, 1, 2],
     // [3, 4, 5]]
-    Tensor tensor({2, 3}, device);
+    tensor tensor({2, 3}, device);
     tensor.from_vector<float>(input, device);
 
     // Transposed logical values:
@@ -211,13 +210,13 @@ TEST_CASE("Tensor to_vector gathers through non-contiguous views", "[tensor][vie
 }
 
 TEST_CASE("Tensor to_vector gathers through shrink views", "[tensor][view][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f,  3.f,  4.f,  5.f,  6.f,  7.f,
                              8.f, 9.f, 10.f, 11.f, 12.f, 13.f, 14.f, 15.f};
 
-    Tensor tensor({4, 4}, device);
+    tensor tensor({4, 4}, device);
     tensor.from_vector<float>(input, device);
 
     auto inner = tensor.shrink({{1, 3}, {1, 3}});
@@ -228,12 +227,12 @@ TEST_CASE("Tensor to_vector gathers through shrink views", "[tensor][view][metal
 }
 
 TEST_CASE("Tensor to_vector gathers through expand views", "[tensor][view][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f};
 
-    Tensor tensor({3, 1}, device);
+    tensor tensor({3, 1}, device);
     tensor.from_vector<float>(input, device);
 
     auto expanded = tensor.expand({3, 4});
@@ -244,12 +243,12 @@ TEST_CASE("Tensor to_vector gathers through expand views", "[tensor][view][metal
 }
 
 TEST_CASE("Tensor to_vector gathers through reshape views", "[tensor][view][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
 
-    Tensor tensor({2, 3}, device);
+    tensor tensor({2, 3}, device);
     tensor.from_vector<float>(input, device);
 
     auto reshaped = tensor.reshape({3, 2});
@@ -260,10 +259,10 @@ TEST_CASE("Tensor to_vector gathers through reshape views", "[tensor][view][meta
 }
 
 TEST_CASE("Tensor from_vector rejects non-contiguous views", "[tensor][view][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
-    Tensor tensor({2, 3}, device);
+    tensor tensor({2, 3}, device);
     tensor.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
 
     auto transposed = tensor.transpose(1, 0);

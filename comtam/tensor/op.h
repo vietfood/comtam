@@ -11,25 +11,14 @@
 
 #pragma once
 
-#include <memory>
-
-#include "comtam/core/device.h"
-#include "comtam/core/kernel.h"
-
-namespace comtam::core {
-class context {
-   public:
-    context();
-    ~context() = default;
-
-    // get method
-    metal_device& device() { return *device_; }
-    const metal_device& device() const { return *device_; }
-    kernel_library& kernels() { return *kernels_; }
-    const kernel_library& kernels() const { return *kernels_; }
-
-   private:
-    std::unique_ptr<metal_device> device_;
-    std::unique_ptr<kernel_library> kernels_;
+namespace comtam {
+enum class Op {
+    // Binary operations
+    ADD,
+    SUB,
+    MUL,  // this is element-wise multiplication
+    DIV,
+    // Matmul
+    MATMUL,
 };
-}  // namespace comtam::core
+}  // namespace comtam

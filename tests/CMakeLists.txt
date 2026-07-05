@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(COMTAM_TEST_SOURCES
   core/context.cpp
-  core/view.cpp
+  tensor/view.cpp
   tensor/operations.cpp
   tensor/forward.cpp
 )

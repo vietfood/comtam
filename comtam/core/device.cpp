@@ -21,7 +21,7 @@
 #include "Metal/MTLCommandEncoder.hpp"
 #include "Metal/MTLComputeCommandEncoder.hpp"
 #include "comtam/core/kernel.h"
-#include "comtam/core/ops.h"
+#include "comtam/core/command.h"
 #include "comtam/core/storage.h"
 #include "comtam/macros/log.h"
 #include "comtam/utils/common.h"
@@ -31,7 +31,7 @@
 
 using namespace comtam::core;
 
-Device::Device() {
+metal_device::metal_device() {
     device_ = NS::TransferPtr(MTL::CreateSystemDefaultDevice());
     COMTAM_CHECK_AND_THROW(device_, std::runtime_error, "Failed to create default Metal device");
 
@@ -40,12 +40,12 @@ Device::Device() {
                            "Failed to create Metal command queue");
 }
 
-Storage Device::allocate(size_t bytes) {
+storage metal_device::allocate(size_t bytes) {
     COMTAM_CHECK_AND_THROW(bytes != 0, std::runtime_error, "Cannot allocate 0 bytes");
-    return Storage(bytes, this->get());
+    return storage(bytes, this->get());
 }
 
-void Device::submit_bop(const Command& command, KernelLibrary& kernels) {
+void metal_device::submit_bop(const command_desc& command, kernel_library& kernels) {
     // we create pool to autorelease objects later
     auto pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
 
@@ -70,8 +70,8 @@ void Device::submit_bop(const Command& command, KernelLibrary& kernels) {
     encoder->setBuffer(command.out_buffer->ptr(), 0, 2);
 
     // then set view info
-    encoder->setBytes(&command.a.view, sizeof(ViewInfo), 3);
-    encoder->setBytes(&command.b.view, sizeof(ViewInfo), 4);
+    encoder->setBytes(&command.a.view, sizeof(view_desc), 3);
+    encoder->setBytes(&command.b.view, sizeof(view_desc), 4);
 
     COMTAM_LOG_DEBUG(
         "submit kernel={}\na: {}\nb: {}\nstorage_bytes=(a={}, b={}, out={})\nview_bytes={}\n",
@@ -101,7 +101,7 @@ void Device::submit_bop(const Command& command, KernelLibrary& kernels) {
                            comtam::utils::ns_error_message(command_buffer->error()));
 }
 
-void Device::submit_matmul(const Command& command, KernelLibrary& kernels) {
+void metal_device::submit_matmul(const command_desc& command, kernel_library& kernels) {
     COMTAM_ASSERT(command.kernel.op == Op::MATMUL, "submit_matmul is for matmul op only");
 
     // we create pool to autorelease objects later
@@ -128,8 +128,8 @@ void Device::submit_matmul(const Command& command, KernelLibrary& kernels) {
     encoder->setBuffer(command.out_buffer->ptr(), 0, 2);
 
     // then set view info
-    encoder->setBytes(&command.a.view, sizeof(ViewInfo), 3);
-    encoder->setBytes(&command.b.view, sizeof(ViewInfo), 4);
+    encoder->setBytes(&command.a.view, sizeof(view_desc), 3);
+    encoder->setBytes(&command.b.view, sizeof(view_desc), 4);
 
     // we also need to set blocksize
     auto w = pipeline->threadExecutionWidth();

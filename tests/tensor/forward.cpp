@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "comtam/core/context.h"
-#include "comtam/core/view.h"
-#include "comtam/tensor.h"
+#include "comtam/tensor/view.h"
+#include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "tests/support/forward_compare.h"
 #include "tests/support/mlx_oracle.h"
@@ -27,45 +27,45 @@ using comtam::tests::forward_compare::ValueMode;
 namespace mlx_test = comtam::tests::mlx_oracle;
 
 TEST_CASE("Forward compare helper", "[forward]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     SECTION("exact host round-trip") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
-        Tensor tensor(input.data(), {2, 3}, device);
+        tensor tensor(input.data(), {2, 3}, device);
         require_forward_matches<float>(device, tensor, {2, 3}, input, ValueMode::Exact);
     }
 
     SECTION("approximate arithmetic") {
         std::vector<float> lhs{1.f, 2.f, 3.f, 4.f};
         std::vector<float> rhs{10.f, 20.f, 30.f, 40.f};
-        Tensor a(lhs.data(), {2, 2}, device);
-        Tensor b(rhs.data(), {2, 2}, device);
+        tensor a(lhs.data(), {2, 2}, device);
+        tensor b(rhs.data(), {2, 2}, device);
 
         require_op_matches_oracle(
-            context, a.dtype(), {2, 2}, [&]() { return Tensor::add(a, b, context); },
+            context, a.dtype(), {2, 2}, [&]() { return tensor::add(a, b, context); },
             [&]() { return std::vector<float>{11.f, 22.f, 33.f, 44.f}; }, ValueMode::Approximate);
     }
 }
 
 TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][mlx][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     struct OpCase {
         mlx_test::BinaryOp mlx_op;
-        Tensor (*comtam_op)(const Tensor&, const Tensor&, core::Context&);
+        tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
     };
 
     const OpCase cases[] = {
-        {mlx_add, Tensor::add},
-        {mlx_subtract, Tensor::sub},
-        {mlx_multiply, Tensor::mul},
-        {mlx_divide, Tensor::div},
+        {mlx_add, tensor::add},
+        {mlx_subtract, tensor::sub},
+        {mlx_multiply, tensor::mul},
+        {mlx_divide, tensor::div},
     };
 
     struct ShapeCase {
-        std::vector<core::ViewInt> shape;
+        view_vector shape;
         size_t numel;
     };
 
@@ -81,8 +81,8 @@ TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][mlx][metal]")
 
             auto lhs = utils::generate_random_array<float>(shape_case.numel, 1.0F, 2.0F);
             auto rhs = utils::generate_random_array<float>(shape_case.numel, 0.5F, 1.5F);
-            Tensor a(lhs.data(), shape, device);
-            Tensor b(rhs.data(), shape, device);
+            tensor a(lhs.data(), shape, device);
+            tensor b(rhs.data(), shape, device);
 
             require_op_matches_oracle(
                 context, a.dtype(), shape, [&]() { return op.comtam_op(a, b, context); },
@@ -93,24 +93,24 @@ TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][mlx][metal]")
 }
 
 TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][metal][broadcast]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     struct OpCase {
         mlx_test::BinaryOp mlx_op;
-        Tensor (*comtam_op)(const Tensor&, const Tensor&, core::Context&);
+        tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
     };
 
     const OpCase op_cases[] = {
-        {mlx_add, Tensor::add},
-        {mlx_subtract, Tensor::sub},
-        {mlx_multiply, Tensor::mul},
-        {mlx_divide, Tensor::div},
+        {mlx_add, tensor::add},
+        {mlx_subtract, tensor::sub},
+        {mlx_multiply, tensor::mul},
+        {mlx_divide, tensor::div},
     };
 
     struct BroadcastCase {
-        std::vector<core::ViewInt> lhs_shape;
-        std::vector<core::ViewInt> rhs_shape;
+        view_vector lhs_shape;
+        view_vector rhs_shape;
     };
 
     const BroadcastCase broadcast_cases[] = {
@@ -124,8 +124,8 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
             CAPTURE(broadcast_case.lhs_shape);
             CAPTURE(broadcast_case.rhs_shape);
 
-            const auto expected_shape = core::View::broadcast_shape(
-                core::View(broadcast_case.lhs_shape), core::View(broadcast_case.rhs_shape));
+            const auto expected_shape = view::broadcast_shape(
+                view(broadcast_case.lhs_shape), view(broadcast_case.rhs_shape));
 
             const auto lhs_numel =
                 comtam::tests::forward_compare::numel_from_shape(broadcast_case.lhs_shape);
@@ -134,8 +134,8 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
 
             auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
             auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
-            Tensor a(lhs.data(), broadcast_case.lhs_shape, device);
-            Tensor b(rhs.data(), broadcast_case.rhs_shape, device);
+            tensor a(lhs.data(), broadcast_case.lhs_shape, device);
+            tensor b(rhs.data(), broadcast_case.rhs_shape, device);
 
             require_op_matches_oracle(
                 context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
@@ -149,12 +149,12 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops", "[forward][mlx][met
 }
 
 TEST_CASE("Forward compare vs MLX for matmul", "[forward][mlx][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     struct MatmulCase {
-        std::vector<core::ViewInt> lhs_shape;
-        std::vector<core::ViewInt> rhs_shape;
+        view_vector lhs_shape;
+        view_vector rhs_shape;
     };
 
     const MatmulCase matmul_case[] = {
@@ -166,7 +166,7 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][mlx][metal]") {
         CAPTURE(shape.lhs_shape);
         CAPTURE(shape.rhs_shape);
 
-        const auto expected_shape = core::ViewVector({shape.lhs_shape[0], shape.rhs_shape[1]});
+        const auto expected_shape = view_vector({shape.lhs_shape[0], shape.rhs_shape[1]});
 
         const auto lhs_numel = comtam::tests::forward_compare::numel_from_shape(shape.lhs_shape);
         const auto rhs_numel = comtam::tests::forward_compare::numel_from_shape(shape.rhs_shape);
@@ -174,23 +174,23 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][mlx][metal]") {
         auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
         auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
 
-        Tensor a(lhs.data(), shape.lhs_shape, device);
-        Tensor b(rhs.data(), shape.rhs_shape, device);
+        tensor a(lhs.data(), shape.lhs_shape, device);
+        tensor b(rhs.data(), shape.rhs_shape, device);
 
         require_op_matches_oracle(
-            context, a.dtype(), expected_shape, [&]() { return Tensor::matmul(a, b, context); },
+            context, a.dtype(), expected_shape, [&]() { return tensor::matmul(a, b, context); },
             [&]() { return mlx_test::matmul_float32(lhs, shape.lhs_shape, rhs, shape.rhs_shape); },
             ValueMode::Approximate);
     }
 }
 
 TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
-    core::Context context;
+    core::context context;
     auto& device = context.device();
 
     SECTION("transpose") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
-        Tensor tensor({2, 3}, device);
+        tensor tensor({2, 3}, device);
         tensor.from_vector<float>(input, device);
 
         // result view: shape=(3, 2), strides=(1, 3), offset=0
@@ -202,7 +202,7 @@ TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
 
     SECTION("permute") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f};
-        Tensor tensor({2, 2, 2}, device);
+        tensor tensor({2, 2, 2}, device);
         tensor.from_vector<float>(input, device);
 
         // result view: shape=(2, 2, 2), strides=(1, 4, 2), offset=0
@@ -214,7 +214,7 @@ TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
 
     SECTION("slice") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f};
-        Tensor tensor({3, 3}, device);
+        tensor tensor({3, 3}, device);
         tensor.from_vector<float>(input, device);
 
         // result view: shape=(2, 2), strides=(3, 1), offset=4
@@ -226,7 +226,7 @@ TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
 
     SECTION("expand") {
         std::vector<float> input{0.f, 1.f, 2.f};
-        Tensor tensor({3, 1}, device);
+        tensor tensor({3, 1}, device);
         tensor.from_vector<float>(input, device);
 
         // result view: shape=(3, 4), strides=(1, 0), offset=0
@@ -238,7 +238,7 @@ TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
 
     SECTION("reshape") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f};
-        Tensor tensor({2, 3}, device);
+        tensor tensor({2, 3}, device);
         tensor.from_vector<float>(input, device);
 
         // result view: shape=(3, 2), strides=(2, 1), offset=0
@@ -250,7 +250,7 @@ TEST_CASE("Forward compare vs MLX for movement ops", "[forward][mlx][metal]") {
 
     SECTION("chained slice then transpose") {
         std::vector<float> input{0.f, 1.f, 2.f, 3.f, 4.f, 5.f, 6.f, 7.f, 8.f};
-        Tensor tensor({3, 3}, device);
+        tensor tensor({3, 3}, device);
         tensor.from_vector<float>(input, device);
 
         // after shrink: shape=(2, 2), strides=(3, 1), offset=4

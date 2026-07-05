@@ -16,32 +16,32 @@
 #include <utility>
 #include <vector>
 
-namespace comtam::core {
-using ViewInt = int64_t;
-using ViewVector = std::vector<ViewInt>;
-using PairViewVector = std::vector<std::pair<ViewInt, ViewInt>>;
+namespace comtam {
+using view_int = int64_t;
+using view_vector = std::vector<view_int>;
+using pair_view_vector = std::vector<std::pair<view_int, view_int>>;
 
-struct View {
-    ViewVector shape;
-    ViewVector strides;
-    ViewInt offset = 0;
+struct view {
+    view_vector shape;
+    view_vector strides;
+    view_int offset = 0;
 
     // for contiguous check
-    ViewVector ref_strides;
+    view_vector ref_strides;
 
     // it should compare from shape -> strides -> offset
-    bool operator==(const View& other) const = default;
+    bool operator==(const view& other) const = default;
 
     // --- Constructor ---
-    View(const ViewVector& shape, ViewInt offset = 0);
-    View(const ViewVector& shape, const ViewVector& strides, ViewInt offset = 0);
+    view(const view_vector& shape, view_int offset = 0);
+    view(const view_vector& shape, const view_vector& strides, view_int offset = 0);
 
     // --- Getter ---
     bool is_contiguous() const { return strides == ref_strides; }
 
     size_t dim() const { return shape.size(); }
 
-    ViewInt numel() const;
+    view_int numel() const;
 
     // returns offset + sum(coord[d] * strides[d]) for a flat linear index
     size_t physical_offset(size_t linear_index) const;
@@ -53,9 +53,9 @@ struct View {
      * then the new shape is (a, c, b).
      * - Reference: https://pytorch.org/docs/stable/generated/torch.permute.html
      */
-    View permute(const ViewVector& new_axis) const;
+    view permute(const view_vector& new_axis) const;
 
-    View transpose(ViewInt a, ViewInt b) const;
+    view transpose(view_int a, view_int b) const;
 
     /**
      * Shrink each axis to [start, end)
@@ -63,11 +63,11 @@ struct View {
      * - For example: `auto y = x.shrink({{1, 3}, {1, 3}});`
      * - Then: axis 0 keeps rows [1, 3), and axis 1 keeps cols [1, 3).
      */
-    View shrink(const PairViewVector& limits) const;
+    view shrink(const pair_view_vector& limits) const;
 
-    View expand(const ViewVector& new_shape) const;
+    view expand(const view_vector& new_shape) const;
 
-    View reshape(const ViewVector& new_shape) const;
+    view reshape(const view_vector& new_shape) const;
 
     /*
      * Return broadcast shape between two shapes, throw error if they aren't compatible
@@ -79,6 +79,6 @@ struct View {
      *
      * Reference: https://numpy.org/doc/stable/user/basics.broadcasting.html
      */
-    static ViewVector broadcast_shape(const View& lhs, const View& rhs);
+    static view_vector broadcast_shape(const view& lhs, const view& rhs);
 };
-}  // namespace comtam::core
+}  // namespace comtam

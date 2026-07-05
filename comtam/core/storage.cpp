@@ -20,7 +20,7 @@
 
 using namespace comtam::core;
 
-Storage::Storage(size_t bytes, MTL::Device* device) : size_(bytes) {
+storage::storage(size_t bytes, MTL::Device* device) : size_(bytes) {
     buffer_ = NS::TransferPtr(device->newBuffer(bytes, MTL::ResourceStorageModeShared));
 
     if (!buffer_) {
@@ -29,7 +29,7 @@ Storage::Storage(size_t bytes, MTL::Device* device) : size_(bytes) {
     }
 }
 
-void Storage::print(const std::string& label) const {
+void storage::print(const std::string& label) const {
     comtam::utils::print_array(static_cast<float*>(buffer_->contents()), size_ / sizeof(float),
                                label);
 }

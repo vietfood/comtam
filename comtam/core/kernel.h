@@ -19,15 +19,15 @@
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLComputePipeline.hpp"
 #include "Metal/MTLLibrary.hpp"
-#include "comtam/core/ops.h"
+#include "comtam/core/command.h"
 
 namespace comtam::core {
 
-class KernelLibrary {
+class kernel_library {
    public:
-    KernelLibrary(MTL::Device* device, std::filesystem::path kernel_dir);
+    kernel_library(MTL::Device* device, std::filesystem::path kernel_dir);
 
-    MTL::ComputePipelineState* get(const Kernel& kernel);
+    MTL::ComputePipelineState* get(const kernel_desc& kernel);
 
    private:
     // kernel will cache its own Device

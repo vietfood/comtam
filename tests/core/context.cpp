@@ -14,13 +14,13 @@
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("Context creates a Metal device and kernel library", "[context][metal]") {
-    comtam::core::Context context;
+    comtam::core::context context;
     REQUIRE(context.device().get() != nullptr);
     REQUIRE(context.device().queue() != nullptr);
 }
 
 TEST_CASE("Device should reject byte-count mismatches", "[device][metal]") {
-    comtam::core::Context context;
+    comtam::core::context context;
     REQUIRE(context.device().get() != nullptr);
     REQUIRE(context.device().queue() != nullptr);
 

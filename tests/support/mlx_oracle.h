@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "comtam/core/view.h"
+#include "comtam/tensor/view.h"
 #include "mlx/c/mlx.h"
 #include "mlx/c/ops.h"
 
@@ -32,7 +32,7 @@ inline void check(int code, const char* what) {
     }
 }
 
-inline std::vector<int> to_mlx_shape(const std::vector<core::ViewInt>& shape) {
+inline std::vector<int> to_mlx_shape(const view_vector& shape) {
     std::vector<int> result;
     result.reserve(shape.size());
 
@@ -110,7 +110,7 @@ class Array {
     ~Array() { reset(); }
 
     [[nodiscard]] static Array from_float32(const std::vector<float>& data,
-                                            const std::vector<core::ViewInt>& shape) {
+                                            const view_vector& shape) {
         auto mlx_shape = to_mlx_shape(shape);
         return Array(mlx_array_new_data(data.data(), mlx_shape.data(),
                                         static_cast<int>(mlx_shape.size()), MLX_FLOAT32));
@@ -147,8 +147,8 @@ inline std::vector<float> to_vector_float32(const Array& array, const Stream& st
 }
 
 inline std::vector<float> binary_float32(const std::vector<float>& lhs,
-                                         const std::vector<float>& rhs,
-                                         const std::vector<core::ViewInt>& shape, BinaryOp op) {
+                                         const std::vector<float>& rhs, const view_vector& shape,
+                                         BinaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, shape);
     auto b = Array::from_float32(rhs, shape);
@@ -159,10 +159,9 @@ inline std::vector<float> binary_float32(const std::vector<float>& lhs,
 }
 
 inline std::vector<float> binary_broadcast_float32(const std::vector<float>& lhs,
-                                                   const std::vector<core::ViewInt>& lhs_shape,
+                                                   const view_vector& lhs_shape,
                                                    const std::vector<float>& rhs,
-                                                   const std::vector<core::ViewInt>& rhs_shape,
-                                                   BinaryOp op) {
+                                                   const view_vector& rhs_shape, BinaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, lhs_shape);
     auto b = Array::from_float32(rhs, rhs_shape);
@@ -173,9 +172,9 @@ inline std::vector<float> binary_broadcast_float32(const std::vector<float>& lhs
 }
 
 inline std::vector<float> matmul_float32(const std::vector<float>& lhs,
-                                         const std::vector<core::ViewInt>& lhs_shape,
+                                         const view_vector& lhs_shape,
                                          const std::vector<float>& rhs,
-                                         const std::vector<core::ViewInt>& rhs_shape) {
+                                         const view_vector& rhs_shape) {
     Stream stream;
     auto a = Array::from_float32(lhs, lhs_shape);
     auto b = Array::from_float32(rhs, rhs_shape);
@@ -186,7 +185,7 @@ inline std::vector<float> matmul_float32(const std::vector<float>& lhs,
 }
 
 inline std::vector<float> transpose_float32(const std::vector<float>& data,
-                                            const std::vector<core::ViewInt>& shape,
+                                            const view_vector& shape,
                                             const std::vector<int>& axes) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
@@ -197,8 +196,7 @@ inline std::vector<float> transpose_float32(const std::vector<float>& data,
     return to_vector_float32(result, stream);
 }
 
-inline std::vector<float> slice_float32(const std::vector<float>& data,
-                                        const std::vector<core::ViewInt>& shape,
+inline std::vector<float> slice_float32(const std::vector<float>& data, const view_vector& shape,
                                         const std::vector<int>& start, const std::vector<int>& stop,
                                         const std::vector<int>& strides) {
     Stream stream;
@@ -212,8 +210,8 @@ inline std::vector<float> slice_float32(const std::vector<float>& data,
 }
 
 inline std::vector<float> broadcast_to_float32(const std::vector<float>& data,
-                                               const std::vector<core::ViewInt>& shape,
-                                               const std::vector<core::ViewInt>& target_shape) {
+                                               const view_vector& shape,
+                                               const view_vector& target_shape) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     auto mlx_shape = to_mlx_shape(target_shape);
@@ -225,9 +223,8 @@ inline std::vector<float> broadcast_to_float32(const std::vector<float>& data,
     return to_vector_float32(result, stream);
 }
 
-inline std::vector<float> reshape_float32(const std::vector<float>& data,
-                                          const std::vector<core::ViewInt>& shape,
-                                          const std::vector<core::ViewInt>& target_shape) {
+inline std::vector<float> reshape_float32(const std::vector<float>& data, const view_vector& shape,
+                                          const view_vector& target_shape) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     auto mlx_shape = to_mlx_shape(target_shape);

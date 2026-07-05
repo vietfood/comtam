@@ -9,7 +9,7 @@
 ** +--( ^_^ )-------------------------------------------------------------+
 */
 
-#include "comtam/core/view.h"
+#include "comtam/tensor/view.h"
 
 #include <algorithm>
 #include <functional>
@@ -19,31 +19,31 @@
 
 #include "comtam/macros/log.h"
 
-using namespace comtam::core;
+using namespace comtam;
 
-View::View(const ViewVector& shape, ViewInt offset)
+view::view(const view_vector& shape, view_int offset)
     : shape(shape), strides(shape.size(), 1), offset(offset), ref_strides(shape.size(), 1) {
-    for (ViewInt i = static_cast<ViewInt>(shape.size()) - 2; i >= 0; --i) {
+    for (view_int i = static_cast<view_int>(shape.size()) - 2; i >= 0; --i) {
         strides[i] = strides[i + 1] * shape[i + 1];
         ref_strides[i] = ref_strides[i + 1] * shape[i + 1];
     }
 }
 
-View::View(const ViewVector& shape, const ViewVector& strides, ViewInt offset)
+view::view(const view_vector& shape, const view_vector& strides, view_int offset)
     : shape(shape), strides(strides), offset(offset), ref_strides(shape.size(), 1) {
     COMTAM_CHECK_AND_THROW(shape.size() == strides.size(), std::runtime_error,
                            "View: shape and strides must have the same rank");
 
-    for (ViewInt i = static_cast<ViewInt>(shape.size()) - 2; i >= 0; --i) {
+    for (view_int i = static_cast<view_int>(shape.size()) - 2; i >= 0; --i) {
         ref_strides[i] = ref_strides[i + 1] * shape[i + 1];
     }
 }
 
-ViewInt View::numel() const {
-    return std::reduce(shape.begin(), shape.end(), ViewInt{1}, std::multiplies<>());
+view_int view::numel() const {
+    return std::reduce(shape.begin(), shape.end(), view_int{1}, std::multiplies<>());
 }
 
-size_t View::physical_offset(size_t linear_index) const {
+size_t view::physical_offset(size_t linear_index) const {
     // linear index shouldn't be larger than number of elements
     COMTAM_CHECK_AND_THROW(linear_index < static_cast<size_t>(numel()), std::invalid_argument,
                            "View::physical_offset: linear index is out of bounds");
@@ -58,18 +58,18 @@ size_t View::physical_offset(size_t linear_index) const {
     }
 
     // tensor isn't contiguous
-    ViewVector dec(shape.size());
+    view_vector dec(shape.size());
 
     // we traverse in reverse
     // decompose linear index first
     size_t tmp = linear_index;
     for (size_t i = shape.size(); i-- > 0;) {
-        dec[i] = static_cast<ViewInt>(tmp % static_cast<size_t>(shape[i]));
+        dec[i] = static_cast<view_int>(tmp % static_cast<size_t>(shape[i]));
         tmp /= static_cast<size_t>(shape[i]);
     }
 
     // then calculate physical offset
-    ViewInt result = offset;
+    view_int result = offset;
     for (size_t i = 0; i < dec.size(); ++i) {
         result += dec[i] * strides[i];
     }
@@ -77,18 +77,18 @@ size_t View::physical_offset(size_t linear_index) const {
     return static_cast<size_t>(result);
 }
 
-View View::permute(const ViewVector& new_axis) const {
+view view::permute(const view_vector& new_axis) const {
     COMTAM_CHECK_AND_THROW(new_axis.size() == shape.size(), std::invalid_argument,
                            "Permutation new axis doesn't match with current shape");
 
-    bool is_valid = std::all_of(new_axis.begin(), new_axis.end(), [&shape = shape](ViewInt axis) {
+    bool is_valid = std::all_of(new_axis.begin(), new_axis.end(), [&shape = shape](view_int axis) {
         return axis >= 0 && static_cast<size_t>(axis) < shape.size();
     });
     COMTAM_CHECK_AND_THROW(is_valid, std::invalid_argument,
                            "Invalid permute axis for current shape");
 
     std::vector<bool> seen(shape.size(), false);
-    for (ViewInt axis : new_axis) {
+    for (view_int axis : new_axis) {
         auto idx = static_cast<size_t>(axis);
         COMTAM_CHECK_AND_THROW(!seen[idx], std::invalid_argument,
                                "Permutation axes must be unique");
@@ -96,8 +96,8 @@ View View::permute(const ViewVector& new_axis) const {
     }
 
     // create a new shape with permutation index
-    ViewVector new_shape(shape.size());
-    ViewVector new_strides(strides.size());
+    view_vector new_shape(shape.size());
+    view_vector new_strides(strides.size());
     for (size_t i = 0; i < shape.size(); ++i) {
         new_shape[i] = shape[static_cast<size_t>(new_axis[i])];
         new_strides[i] = strides[static_cast<size_t>(new_axis[i])];
@@ -105,14 +105,14 @@ View View::permute(const ViewVector& new_axis) const {
     return {new_shape, new_strides, offset};
 }
 
-View View::transpose(ViewInt a, ViewInt b) const {
+view view::transpose(view_int a, view_int b) const {
     COMTAM_CHECK_AND_THROW(a >= 0 && b >= 0 && static_cast<size_t>(a) < shape.size() &&
                                static_cast<size_t>(b) < shape.size(),
                            std::invalid_argument, "Transpose axes are out of bounds");
 
-    ViewVector axes(shape.size());
+    view_vector axes(shape.size());
     for (size_t i = 0; i < axes.size(); ++i) {
-        axes[i] = static_cast<ViewInt>(i);
+        axes[i] = static_cast<view_int>(i);
     }
     // then transpose the a and b from that axis
     std::swap(axes[static_cast<size_t>(a)], axes[static_cast<size_t>(b)]);
@@ -120,7 +120,7 @@ View View::transpose(ViewInt a, ViewInt b) const {
     return permute(axes);
 }
 
-View View::shrink(const PairViewVector& limits) const {
+view view::shrink(const pair_view_vector& limits) const {
     COMTAM_CHECK_AND_THROW(limits.size() == shape.size(), std::invalid_argument,
                            "The numbers of each limit should match with shape size");
 
@@ -133,8 +133,8 @@ View View::shrink(const PairViewVector& limits) const {
 
     COMTAM_CHECK_AND_THROW(is_valid_limits, std::invalid_argument, "limits is not valid");
 
-    ViewVector new_shape(shape.size());
-    ViewInt new_offset = offset;
+    view_vector new_shape(shape.size());
+    view_int new_offset = offset;
     for (size_t i = 0; i < shape.size(); ++i) {
         new_shape[i] = limits[i].second - limits[i].first;
         new_offset += limits[i].first * strides[i];
@@ -142,9 +142,9 @@ View View::shrink(const PairViewVector& limits) const {
     return {new_shape, strides, new_offset};
 }
 
-View View::expand(const ViewVector& new_shape) const {
-    ViewInt new_ndim = static_cast<ViewInt>(new_shape.size());
-    ViewInt current_ndim = static_cast<ViewInt>(dim());  // so the loop index can be negative
+view view::expand(const view_vector& new_shape) const {
+    view_int new_ndim = static_cast<view_int>(new_shape.size());
+    view_int current_ndim = static_cast<view_int>(dim());  // so the loop index can be negative
 
     COMTAM_CHECK_AND_THROW(new_ndim >= current_ndim, std::invalid_argument,
                            "expand shape cannot have fewer dimensions");
@@ -156,10 +156,10 @@ View View::expand(const ViewVector& new_shape) const {
      * So the first thing we do we must increase dimension of current shape
      * (3, 2) -> (1, 3, 2) to match with (3, 3, 2)
      */
-    ViewVector new_strides(static_cast<size_t>(new_ndim), 0);
+    view_vector new_strides(static_cast<size_t>(new_ndim), 0);
     for (auto [i, j] = std::tuple(new_ndim - 1, current_ndim - 1); i >= 0; --i, --j) {
-        ViewInt target_dim_size = new_shape[static_cast<size_t>(i)];
-        ViewInt current_dim_size = (j >= 0) ? shape[static_cast<size_t>(j)] : 1;
+        view_int target_dim_size = new_shape[static_cast<size_t>(i)];
+        view_int current_dim_size = (j >= 0) ? shape[static_cast<size_t>(j)] : 1;
 
         if (target_dim_size == current_dim_size) {
             new_strides[static_cast<size_t>(i)] = (j >= 0) ? strides[static_cast<size_t>(j)] : 1;
@@ -174,9 +174,9 @@ View View::expand(const ViewVector& new_shape) const {
     return {new_shape, new_strides, offset};
 }
 
-View View::reshape(const ViewVector& new_shape) const {
-    ViewInt new_numel =
-        std::reduce(new_shape.begin(), new_shape.end(), ViewInt{1}, std::multiplies<>());
+view view::reshape(const view_vector& new_shape) const {
+    view_int new_numel =
+        std::reduce(new_shape.begin(), new_shape.end(), view_int{1}, std::multiplies<>());
 
     COMTAM_CHECK_AND_THROW(new_numel == numel(), std::invalid_argument,
                            "New shape cannot have different number of elements than current shape");
@@ -187,14 +187,14 @@ View View::reshape(const ViewVector& new_shape) const {
     return {new_shape, offset};
 }
 
-ViewVector View::broadcast_shape(const View& lhs, const View& rhs) {
-    ViewVector big = (lhs.dim() >= rhs.dim()) ? lhs.shape : rhs.shape;
-    ViewVector small = (lhs.dim() >= rhs.dim()) ? rhs.shape : lhs.shape;
+view_vector view::broadcast_shape(const view& lhs, const view& rhs) {
+    view_vector big = (lhs.dim() >= rhs.dim()) ? lhs.shape : rhs.shape;
+    view_vector small = (lhs.dim() >= rhs.dim()) ? rhs.shape : lhs.shape;
 
     const size_t ndim = big.size();
     const size_t offset = ndim - small.size();  // small is left-padded with 1s
 
-    ViewVector new_shape(ndim);
+    view_vector new_shape(ndim);
 
     for (size_t i = ndim; i-- > 0;) {
         size_t a = big[i];

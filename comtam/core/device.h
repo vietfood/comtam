@@ -22,15 +22,15 @@
 #include "comtam/macros/log.h"
 
 namespace comtam::core {
-struct Command;
-class KernelLibrary;
+struct command_desc;
+class kernel_library;
 
-class Device {
+class metal_device {
    public:
-    Device();
+    metal_device();
 
     // NS::SharedPtr will automatically handle memory management
-    ~Device() = default;
+    ~metal_device() = default;
 
     // get method
     const MTL::Device* get() const { return device_.get(); }
@@ -40,10 +40,10 @@ class Device {
     MTL::CommandQueue* queue() { return command_queue_.get(); }
 
     // methods for storage
-    Storage allocate(size_t bytes);
+    storage allocate(size_t bytes);
 
     template <typename T>
-    void copy(const T* data, size_t count, Storage& storage) {
+    void copy(const T* data, size_t count, storage& storage) {
         const size_t bytes = count * sizeof(T);
         COMTAM_CHECK_AND_THROW(bytes == storage.size(), std::runtime_error,
                                "Data size does not match storage size");
@@ -52,14 +52,14 @@ class Device {
     }
 
     template <typename T>
-    void copy(Storage& storage, T* data, size_t count) {
+    void copy(storage& storage, T* data, size_t count) {
         const size_t bytes = count * sizeof(T);
         COMTAM_CHECK_AND_THROW(bytes == storage.size(), std::runtime_error,
                                "Data size does not match storage size");
         std::memcpy(data, storage.ptr()->contents(), bytes);
     }
 
-    void copy(Storage& src, Storage& dst) {
+    void copy(storage& src, storage& dst) {
         COMTAM_CHECK_AND_THROW(src.size() == dst.size(), std::runtime_error,
                                "Storage sizes do not match");
         std::memcpy(dst.ptr()->contents(), src.ptr()->contents(), src.size());
@@ -67,8 +67,8 @@ class Device {
     }
 
     // methods for command execution
-    void submit_bop(const Command& command, KernelLibrary& kernels);
-    void submit_matmul(const Command& command, KernelLibrary& kernels);
+    void submit_bop(const command_desc& command, kernel_library& kernels);
+    void submit_matmul(const command_desc& command, kernel_library& kernels);
 
    private:
     NS::SharedPtr<MTL::Device> device_;
