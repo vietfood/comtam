@@ -4,8 +4,9 @@ The implementation evidence currently lives in:
 
 - `tests/support/forward_compare.h`
 - `tests/support/mlx_oracle.h`
-- `tests/tensor/forward.cpp`
-- `tests/tensor/operations.cpp`
+- `tests/tensor/ops_elementwise.cpp`
+- `tests/tensor/movement.cpp`
+- `tests/tensor/tensor_api.cpp`
 
 That is the right place for the code. The table below records what is verified,
 what is intentionally unsupported until Module 5, and which tests provide the
@@ -32,12 +33,6 @@ What is good:
 - MLX stays test-only through `tests/support/mlx_oracle.h` and the `comtam_tests`
   target. It does not become a `comtam_lib` dependency.
 
-Evidence:
-
-- `Forward compare helper` covers an exact host round-trip and an approximate
-  arithmetic comparison.
-- CTest discovers and runs the helper test.
-
 ## Assignment 4.2: Test Elementwise Ops
 
 ### Agent Feedback / Grading
@@ -47,9 +42,8 @@ Status: passed.
 What is good:
 
 - `Forward compare vs MLX for elementwise ops` checks `add/sub/mul/div` against
-  MLX C through the reusable comparison helper.
-- `tests/tensor/operations.cpp` also checks the binary ops against MLX C on
-  several asymmetric shapes.
+  MLX C through the reusable comparison helper in
+  `tests/tensor/ops_elementwise.cpp`.
 - Division uses random positive RHS values, so it tests normal division rather
   than accidentally turning into divide-by-zero policy.
 
@@ -75,7 +69,7 @@ What is good:
 
 Evidence:
 
-- Each movement section in `tests/tensor/forward.cpp` now records the expected
+- Each movement section in `tests/tensor/movement.cpp` records the expected
   comtam view state before checking values against MLX C.
 - The comments cover shape, strides, and offset for transpose, permute,
   shrink/slice, expand, reshape, and chained slice-then-transpose.

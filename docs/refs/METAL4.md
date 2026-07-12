@@ -359,7 +359,7 @@ Read this section as a grounded answer to "should any of this land in
 **Not yet, and possibly never as a wholesale adoption:**
 
 - Switching `Device`/`KernelLibrary`/`Command` from classic
-  `MTL::CommandQueue` to `MTL4::CommandQueue` is a Module 9 hardening move at
+  `MTL::CommandQueue` to `MTL4::CommandQueue` is a Module 13 performance move at
   the earliest. It attacks per-dispatch CPU overhead (argument tables,
   reusable allocators, async commit), which is exactly what
   `docs/course/INDEX.md`'s "no optimization before a failing performance
@@ -385,12 +385,12 @@ Read this section as a grounded answer to "should any of this land in
   *hardware-accelerated* answer eventually looks like, and why it needs
   `half` precision and a 64x64 tile size to make sense.
 - The residency-set and argument-table patterns are useful vocabulary for
-  reading Module 9 profiling notes later, even before `comtam` adopts them.
+  reading Module 13 profiling notes later, even before `comtam` adopts them.
 
 **A cheap idea worth remembering even without adopting MTL4 command buffers:**
 `MTL::Buffer::gpuAddress()` and bindless-style binding exist in the *classic*
 API surface too, if per-dispatch `setBuffer` overhead ever becomes the
-measured bottleneck (Module 9). You do not need to adopt the entire MTL4
+measured bottleneck (Module 13). You do not need to adopt the entire MTL4
 command model to consider that later.
 
 ---
@@ -514,7 +514,7 @@ cooperative-tensor `matmul2d` kernel, purely as orientation for what a
 "three years later, hardware-accelerated" matmul looks like while Module 5
 is still asking for a correct, hand-written, threadgroup-tiled one. The
 command-submission API is real and its performance argument is real, but it
-is Module 9 territory - it optimizes per-dispatch CPU overhead in a framework
+is Module 13 territory - it optimizes per-dispatch CPU overhead in a framework
 that does not have enough dispatches yet to measure that overhead
 meaningfully. `MTLTensor` and the ML command encoder are not worth adopting
 at all at `comtam`'s current scope. Read Metal 4 to know what exists and why

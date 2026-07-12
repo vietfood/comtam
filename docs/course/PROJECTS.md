@@ -1,99 +1,119 @@
-## Final Projects
+## Workload Projects
 
-Final projects prove the eager stack works end to end. Choose one only after
-Modules 1 through 7 are stable. Module 8 is strongly recommended first, because
-it shapes the training loop every project depends on.
+Projects earn framework breadth by applying the smallest existing runtime to a
+real pressure. They do not override module order: finish the prerequisite gate,
+then choose one project whose missing capability you actually want to support.
 
-Each project ends with a gate, not a demo. Separate "compiled", "smoke ran", and
-"gate passed".
+Every project report separates:
+
+```text
+compiled    -> target built
+smoke ran   -> one representative input completed
+gate passed -> correctness, gradient, convergence/lifetime target met
+```
+
+## Core Projects
 
 ### Project A: MNIST MLP ⭐⭐
 
-**Goal:** Train a 2-layer MLP on MNIST to >90% accuracy.
+**Prerequisite:** Module 8.
 
-**Requirements:**
+**Goal:** reproduce the Module 8 two-layer MLP at greater than 90% validation
+accuracy from a clean configuration.
 
-- `nn::Linear` (Module 7)
-- `relu` and softmax cross-entropy (Modules 7 and 8)
-- `SGD` (Module 7)
-- MNIST loading (Module 8)
+**Required evidence:** fixed seed/configuration, stable cross-entropy oracle,
+multi-epoch accuracy, bounded live graph state, and recorded batch/epoch timing.
 
-**Steps:**
+This is the recommended first project because it proves parameters, forward,
+autograd, optimizer, data movement, and sustained execution together.
 
-1. Assemble `Linear -> relu -> Linear`.
-2. Implement the epoch/batch training loop.
-3. Track loss and validation accuracy.
-4. Verify convergence across real epochs.
+### Project B: Tiny Autograd Visualizer ⭐⭐
 
-**Why this project:** The MNIST MLP is the smallest proof that forward ops,
-autograd, the optimizer, and data movement are coherent enough to train. It is
-mostly Module 8 made rigorous.
+**Prerequisite:** Module 6.
 
----
+**Goal:** render or print the dynamic graph for a branched forward/backward pass.
 
-### Project B: MNIST CNN ⭐⭐⭐
+Show node identity, saved inputs/metadata, topological order, each incoming
+gradient contribution, leaf accumulation, and when graph state is released.
 
-**Goal:** Train a small CNN on MNIST to >98% accuracy.
+**Gate:** the visualization of `sum(x*x + x)` matches a hand trace, and enabling
+the visualizer does not change ownership or numerical results.
 
-**Requirements (builds on Project A):**
+### Project C: Operator Coverage Sprint ⭐⭐
 
-- `View` padding and `shrink` working solidly (Module 2)
-- `nn::Conv2d` via im2col
-- `nn::MaxPool2d`
-- batched matmul (extend Module 5)
+**Prerequisites:** Modules 6 and 10.
 
-This is significantly harder because Conv2d requires:
+**Goal:** add a workload-driven subset of `exp`, `log`, `sqrt`, `sigmoid`, `tanh`,
+max/min reductions, comparisons, or `where`.
 
-- padding for same-size convolutions
-- sliding-window extraction (im2col)
-- batched matmul for the actual convolution
-- shrink for output sizing
+Each op needs a supported-semantics matrix row, independent forward oracle,
+numerical gradient test when differentiable, scalar/empty/layout cases, and
+Python coverage if Module 14 has passed. If an op does not fit the existing
+dispatch/autograd pattern, document the design pressure before special-casing it.
 
-**Why this project:** CNNs force the view system to grow up. If padding, shrink,
-reshape, and batched matmul are shaky, this project exposes it fast. Expect to
-revisit Module 2 and add the `pad` op you previously deferred.
+## Model-Expansion Projects
 
----
+### Project D: MNIST CNN ⭐⭐⭐
 
-### Project C: Tiny Autograd Visualizer ⭐⭐
+**Prerequisites:** Modules 9-10 and Project A.
 
-**Goal:** Build a tool that prints or renders the dynamic autograd graph for a
-forward+backward pass.
+**Goal:** train a small CNN on MNIST to greater than 98% validation accuracy.
 
-Show:
+This project may earn padding, window extraction/im2col, batched matmul,
+`conv2d`, and pooling. Add them one at a time with forward/gradient oracles; do
+not start by building a general convolution subsystem.
 
-- the grad nodes created during forward
-- the topological order used by backward
-- which tensors accumulate gradients from more than one path
-- saved tensors per node and when they are released
+**Gate:** deterministic multi-epoch convergence, complete new-op conformance
+rows, and a performance comparison identifying whether im2col materialization or
+matmul dominates.
 
-**Why this project:** comtam's autograd graph is built eagerly and is invisible by
-default. Making it visible is a strong test of whether you understand Module 6.
-If you can render the graph and explain every edge, you understand the backward
-pass.
+### Project E: Tiny Transformer Inference ⭐⭐⭐
 
----
+**Prerequisites:** Modules 10-13.
 
-### Project D: Operator Coverage Sprint ⭐⭐
+**Goal:** run one small, fixed transformer-like inference workload from a saved
+checkpoint.
 
-**Goal:** Widen op coverage with full forward and gradient tests for each.
+Expected pressure includes batched matmul, embeddings/gather, softmax, layer
+normalization, integer token indices, causal masking, and persistence. This
+project earns an integer dtype only when its storage, transfer, validation,
+operator, serialization, and Python semantics are all implemented.
 
-Candidates: `exp`, `log`, `sqrt`, `sigmoid`, `tanh`, `max`/`min` reductions,
-`where`.
+**Gate:** compare intermediate activations and final logits to an independent
+reference on fixed tokens, then record memory and latency for the complete
+sequence.
 
-Rules:
+Do not add tokenization or model downloading to the tensor core. Conversion and
+fixtures belong in tools/examples.
 
-- Each new op needs a CPU-oracle forward test and a numerical gradient test
-  before it counts.
-- Add ops only with the dispatch and autograd patterns already established. If an
-  op does not fit, record that design pressure in the project notes instead of
-  special-casing it.
+## Product Projects
 
-**Why this project:** Breadth with discipline. This project rewards the test
-infrastructure from Modules 4 and 6 and reveals where the op/dispatch/autograd
-patterns are still too rigid.
+### Project F: Python Training Package ⭐⭐⭐
 
----
+**Prerequisite:** Module 14.
 
-Good luck. The best way to learn is to implement, get stuck, then discover why
-the proper solution works better. Keep patches small and keep the gates honest.
+**Goal:** reproduce Project A through the installed Python API without calling
+internal extension symbols.
+
+**Gate:** a clean environment installs the built wheel, trains or loads the MLP,
+passes the accuracy target, saves a checkpoint that C++ can read, and exits
+without retained native state. NumPy is the forward oracle; native and Python
+parameter names/values must agree.
+
+### Project G: Release Candidate Rehearsal ⭐⭐⭐
+
+**Prerequisite:** Module 15.
+
+**Goal:** prove another machine/environment can consume the narrow supported
+runtime from artifacts alone.
+
+**Gate:** native package and Python wheel install from the release candidate,
+documentation examples run, the supported model loads and infers, compatibility
+fixtures pass, and benchmark/version reports are archived with checksums.
+
+## Choosing A Project
+
+Choose the smallest project that forces a capability you genuinely want. Project
+A validates the core, Project B deepens autograd understanding, Project C widens
+operators, Projects D/E widen model scope, and Projects F/G validate the Python
+and release surfaces. Completing all of them is not a course requirement.

@@ -3,6 +3,23 @@
 Make comtam prove its forward behavior against a trusted reference before
 autograd enters the picture.
 
+## Module Contract
+
+**Prerequisite:** Module 3's same-shape binary dispatch is covered by a CPU
+oracle. **Deliverables:** a CTest-only forward comparison helper, independent
+oracle coverage for Module 3 binary operations and Module 2 movement/readback,
+and a correctness map in `docs/solution/MODULE_4.md`. The helper compares shape
+before values, uses exact equality for copies/movement and a stated epsilon for
+float arithmetic, and frees all oracle resources.
+
+MLX C is test-only; it must not enter `comtam_lib` or runtime dispatch. The
+module verifies existing forward behavior, not broadcasting, reductions,
+matmul, autograd, or performance. Completion evidence is the relevant CTest
+target passing and a correctness map whose unsupported rows name a failing or
+skipped test. This contract clarifies the original Module 4 gate and does not
+retroactively require a passed module to replace an already-independent CPU
+oracle with MLX C.
+
 ## Why This Module Comes Before Autograd
 
 Autograd depends on forward semantics.
@@ -57,7 +74,12 @@ It should:
 - use exact comparison for copies and movement ops, and a small epsilon
   (for example `1e-5`) for float arithmetic
 
-The MLX C notes live in [`../MLX_C_ORACLE.md`](../MLX_C_ORACLE.md). The helper
+The helper must report the operation, expected and actual shape, first differing
+flat index, and values when a comparison fails; otherwise a stride failure is
+needlessly difficult to localize.
+
+The MLX C notes live in
+[`../note/MLX_C_ORACLE.md`](../note/MLX_C_ORACLE.md). The helper
 should stay under `tests/`, wired into CTest, and linked only into test targets.
 Keep it small.
 
@@ -120,6 +142,11 @@ matmul        unsupported   -             Module 5
 
 Anything "unsupported" should become an explicit failing or skipped test so it
 cannot be silently forgotten.
+
+Use a skipped test when the API is intentionally absent at this point. Reserve a
+failing test for an API that exists but currently violates its declared
+contract; an unconditional failing placeholder would make the module gate
+impossible to pass.
 
 **Why this assignment:** A written correctness map is the difference between "I
 think it works" and a gate you can defend. Module 6 will start from this map.

@@ -312,7 +312,7 @@ assignment is:
    tested - replacing the innermost few levels of the halving tree with one
    `simd_reduce` call is a small diff with a real payoff, and is a good
    candidate for "the first optimization I made after a measurement" in
-   Module 9, not something to reach for before the naive version works.
+   Module 13, not something to reach for before the naive version works.
 
 The point of reading MLX here is not to reimplement its reduction library.
 It's to make sure the design choices in `reduction.metal` (single-block vs

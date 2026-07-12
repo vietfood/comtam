@@ -2,6 +2,25 @@
 
 The `View` is the heart of zero-copy tensor operations.
 
+## Module Contract
+
+**Prerequisite:** Module 1's storage ownership and read/write tests pass.
+**Deliverables:** `View` supplies one logical-to-physical offset rule;
+`permute`/`transpose`, `shrink`, `expand`, and view-only `reshape` transform
+metadata without allocating; and `Tensor::to_vector` gathers according to that
+metadata. The required APIs are the signatures shown in Assignments 2.2--2.6.
+
+The supported first-pass scope is non-negative, in-range shrink bounds,
+right-aligned expansion, and reshape only when it remains a view. Negative
+indexing, stepped slices, padding, implicit copies in `reshape`, and GPU
+materialization for readback are unsupported. Completion evidence is CPU-oracle
+tests for contiguous, transposed, broadcast, sliced, reshaped, and directly
+read-back non-contiguous views, plus the short gradient preview in 2.8.
+Assignment 2.9 remains a recommended, non-blocking reference-reading exercise,
+matching the recorded historical grade. These details clarify the original gate;
+they do not retroactively require a previously passed Module 2 implementation to
+add new view forms.
+
 If you understand views, you understand why `transpose`, `reshape`, `expand`,
 `slice`, and many gradient rules do not move data. If you do not understand
 views, every later kernel will feel haunted.
@@ -209,6 +228,12 @@ Rules:
 3. Do not special-case transpose or broadcast. The formula already covers them.
 4. Add a contiguous fast path using `is_contiguous()`.
 
+`linear_idx` is valid only in `0 .. numel()-1`; reject a larger index rather
+than returning an unrelated storage location. Treat scalar shape `()` as one
+element at `offset`, and a shape containing zero as `numel() == 0`, so it has no
+valid linear index. This is a recommended precision check for the original
+gate, not a requirement to add empty-tensor operators before Module 5.
+
 **Tests to write:**
 
 ```text
@@ -233,6 +258,8 @@ View transpose(size_t a, size_t b) const;             // swap two axes
 Rules:
 
 - Reorder `shape` and `strides` together by `axes`.
+- Require `axes` to contain every axis exactly once; reject a wrong-length list,
+  duplicate axis, or out-of-range axis.
 - Do not touch `offset`.
 - After a permute, `is_contiguous()` should usually return false. Confirm that
   `ref_strides` still reflects the contiguous layout of the new shape, or decide
@@ -288,6 +315,9 @@ Rules:
 - A dimension of size 1 can expand to any size by setting its stride to 0.
 - A dimension whose size already matches stays unchanged.
 - A dimension that is neither 1 nor equal is an error.
+- Align shapes from the right: leading dimensions absent from the input are
+  implicit size-1 dimensions with stride 0. For example, `(3,)` may expand to
+  `(2, 3)`, while `(3,)` may not expand to `(3, 2)`.
 
 Questions:
 
@@ -311,6 +341,9 @@ Rules:
 1. `numel()` must be preserved.
 2. A contiguous view can always be reshaped by recomputing contiguous strides.
 3. A non-contiguous view sometimes cannot be reshaped without copying.
+4. Every target extent is non-negative; only one inferred `-1` extent is allowed
+   if you choose to support inference. It is also valid to reject `-1` entirely
+   in this module, but document that choice.
 
 Questions:
 
@@ -319,8 +352,8 @@ Questions:
    `contiguous()` copy?
 
 **Recommended first choice:** Error with a message that explains which stride
-relationship broke. Add `contiguous()` (a real copy) as the escape hatch, but do
-not silently copy inside `reshape`. Silent copies hide cost.
+relationship broke. Module 10 later adds `contiguous()` as an explicit real-copy
+escape hatch; do not silently copy inside `reshape`. Silent copies hide cost.
 
 **Study prompt:** Write down one reshape-after-permute that can be a view, and
 one that cannot.
@@ -339,8 +372,9 @@ Two valid designs:
   then `memcpy`. Faster, but needs Module 3's dispatch first.
 
 **Recommended first choice:** Implement A now. It makes every view op from this
-module testable immediately, without waiting for kernels. Revisit B in Module 9
-only if a measurement says readback dominates.
+module testable immediately, without waiting for kernels. Module 10 introduces
+device-side `contiguous()` materialization; optimize readback only if Module 13
+later measures it as a bottleneck.
 
 **Test:** Transpose a `(2, 3)`, call `to_vector`, and compare against a CPU
 transpose of the original data, element for element.

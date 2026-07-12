@@ -106,9 +106,14 @@ comtam/
 
 tests/
   core/context.cpp
-  tensor/view.cpp
-  tensor/operations.cpp
-  tensor/forward.cpp
+  tensor/
+    view.cpp              pure view metadata
+    tensor_api.cpp        storage share, from/to_vector contracts, op rejects
+    forward_helper.cpp    smoke coverage for the shared comparison helper
+    ops_elementwise.cpp   same-shape binary ops vs mlx-c
+    ops_broadcast.cpp     broadcast binary ops vs mlx-c
+    ops_matmul.cpp        matmul vs mlx-c
+    movement.cpp          view movement readback vs mlx-c
   support/
     forward_compare.h   shape/value assertion helpers shared by forward tests
     mlx_oracle.h         thin mlx-c wrapper used as an independent oracle
@@ -326,17 +331,17 @@ The current tests prove these architectural claims:
   correctly (`tests/tensor/view.cpp`).
 - `tensor` round-trips float32 host data, rejects wrong element counts, and
   two tensor headers can safely share one `storage` with writes visible across
-  headers (`tests/tensor/operations.cpp`).
+  headers (`tests/tensor/tensor_api.cpp`).
 - `tensor::to_vector` gathers correctly through non-contiguous, shrunk,
   expanded, and reshaped views; `tensor::from_vector` still rejects
-  non-contiguous writes.
-- Binary ops reject mismatched dtypes/shapes and non-contiguous inputs before
-  reaching the kernel.
+  non-contiguous writes (`tests/tensor/movement.cpp`, `tests/tensor/tensor_api.cpp`).
+- Binary ops reject incompatible shapes and non-contiguous inputs before
+  reaching the kernel (`tests/tensor/tensor_api.cpp`).
 - Forward correctness for elementwise ops, broadcast binary ops, matmul, and
   movement ops (permute/transpose/shrink/expand/reshape) is checked against
   **mlx-c** as an independent oracle, not a hand-rolled CPU reference
-  (`tests/tensor/forward.cpp`, `tests/support/mlx_oracle.h`,
-  `tests/support/forward_compare.h`).
+  (`tests/tensor/ops_*.cpp`, `tests/tensor/movement.cpp`,
+  `tests/support/mlx_oracle.h`, `tests/support/forward_compare.h`).
 
 If a claim matters architecturally, it should eventually have a test like this.
 
