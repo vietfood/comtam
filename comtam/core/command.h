@@ -35,6 +35,10 @@ COMTAM_INLINE std::string op2kernel(const Op& op) {
             return "div";
         case Op::MATMUL:
             return "matmul";
+        case Op::SUM:
+            return "reduction_sum";
+        case Op::MAX:
+            return "reduction_min";
     }
     COMTAM_THROW_ERROR(std::runtime_error, "op isn't supported by kernel");
 }
@@ -45,6 +49,10 @@ COMTAM_INLINE std::string dtype2kernel(const DType& dtype) {
             return "fp32";
     }
     COMTAM_THROW_ERROR(std::runtime_error, "dtype isn't supported by kernel");
+}
+
+COMTAM_INLINE bool is_reduce_op(const Op& op) {
+    return op == Op::SUM || op == Op::MAX;
 }
 
 // a kernel is represented by an op and an dtype

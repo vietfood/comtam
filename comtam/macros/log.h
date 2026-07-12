@@ -40,7 +40,8 @@ COMTAM_INLINE void log(const char* level,
                        int line,
                        fmt::format_string<T...> fmt,
                        T&&... args) {
-    vlog(level, file, line, fmt, fmt::make_format_args(args...));
+    // fmt::format_string's implicit string_view conversion is deprecated; use get().
+    vlog(level, file, line, fmt.get(), fmt::make_format_args(args...));
 }
 template <typename... T>
 COMTAM_INLINE std::string format_message(fmt::format_string<T...> fmt, T&&... args) {

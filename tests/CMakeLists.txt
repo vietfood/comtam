@@ -12,8 +12,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(COMTAM_TEST_SOURCES
   core/context.cpp
   tensor/view.cpp
-  tensor/operations.cpp
-  tensor/forward.cpp
+  tensor/tensor_api.cpp
+  tensor/ops_elementwise.cpp
+  tensor/ops_broadcast.cpp
+  tensor/ops_matmul.cpp
+  tensor/movement.cpp
 )
 
 add_executable(comtam_tests

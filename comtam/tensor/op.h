@@ -20,5 +20,8 @@ enum class Op {
     DIV,
     // Matmul
     MATMUL,
+    // Reduce
+    SUM,
+    MAX
 };
 }  // namespace comtam
