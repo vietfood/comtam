@@ -1,10 +1,11 @@
-## Workload Projects
+## Sequential Capstone Track
 
-Projects earn framework breadth by applying the smallest existing runtime to a
-real pressure. They do not override module order: finish the prerequisite gate,
-then choose one project whose missing capability you actually want to support.
+The capstones prove that the framework mechanisms taught by the modules compose
+into increasingly demanding real workloads. They are sequential rather than a
+menu: pass each prerequisite module and capstone gate before beginning the next
+stage.
 
-Every project report separates:
+Every capstone report separates:
 
 ```text
 compiled    -> target built
@@ -12,108 +13,105 @@ smoke ran   -> one representative input completed
 gate passed -> correctness, gradient, convergence/lifetime target met
 ```
 
-## Core Projects
+Supporting work is attached to the capstone that earns it. Operator coverage is
+not an independent feature sprint, the autograd visualizer supports debugging,
+Python training repeats an already trusted native workload, and release
+rehearsal proves artifact consumption.
 
-### Project A: MNIST MLP ⭐⭐
+## Capstone 1: MLP Training
 
-**Prerequisite:** Module 8.
+**Prerequisite:** Module 8 for the native gate; Module 14 for the Python gate.
 
-**Goal:** reproduce the Module 8 two-layer MLP at greater than 90% validation
-accuracy from a clean configuration.
+**Goal:** train the Module 8 two-layer MNIST MLP to greater than 90% validation
+accuracy, first through the native API and later through the installed Python
+API.
 
-**Required evidence:** fixed seed/configuration, stable cross-entropy oracle,
-multi-epoch accuracy, bounded live graph state, and recorded batch/epoch timing.
+**Required evidence:** fixed seed and configuration, stable cross-entropy
+oracle, multi-epoch accuracy, bounded live graph state, recorded batch/epoch
+timing, and reproducible checkpoint resume. The Python run must use public
+package symbols, preserve native parameter names and values, and exchange a
+checkpoint with C++.
 
-This is the recommended first project because it proves parameters, forward,
-autograd, optimizer, data movement, and sustained execution together.
+**Supporting milestone:** build a tiny autograd visualizer after Module 6. For
+`sum(x*x + x)`, show node identity, saved inputs or metadata, topological order,
+incoming gradient contributions, leaf accumulation, and graph-state release.
+Enabling it must not change ownership or numerical results.
 
-### Project B: Tiny Autograd Visualizer ⭐⭐
+**Gate:** both required API surfaces reach the accuracy target from a clean
+configuration, resume reproducibly, and exit without retained graph or native
+state. The Python portion becomes mandatory only after Module 14.
 
-**Prerequisite:** Module 6.
+## Capstone 2: CNN Training
 
-**Goal:** render or print the dynamic graph for a branched forward/backward pass.
+**Prerequisites:** Module 16 and Capstone 1.
 
-Show node identity, saved inputs/metadata, topological order, each incoming
-gradient contribution, leaf accumulation, and when graph state is released.
+**Goal:** train one fixed small CNN on MNIST to greater than 98% validation
+accuracy.
 
-**Gate:** the visualization of `sum(x*x + x)` matches a hand trace, and enabling
-the visualizer does not change ownership or numerical results.
+Module 16 earns only the operations this architecture needs, such as padding,
+`conv2d`, pooling, activation functions, and any required batched operation. Add
+them one at a time with forward and gradient oracles; do not begin with a
+general convolution subsystem.
 
-### Project C: Operator Coverage Sprint ⭐⭐
+**Gate:** deterministic multi-epoch convergence, complete supported-semantics
+rows for every new operation, bounded lifetime behavior, native/Python agreement,
+and a measured performance comparison identifying the dominant CNN cost.
 
-**Prerequisites:** Modules 6 and 10.
+## Capstone 3: GPT-2
 
-**Goal:** add a workload-driven subset of `exp`, `log`, `sqrt`, `sigmoid`, `tanh`,
-max/min reductions, comparisons, or `where`.
+**Prerequisites:** Module 17 and Capstone 2 for tiny training; Module 18 and the
+tiny-training gate for real-checkpoint inference.
 
-Each op needs a supported-semantics matrix row, independent forward oracle,
-numerical gradient test when differentiable, scalar/empty/layout cases, and
-Python coverage if Module 14 has passed. If an op does not fit the existing
-dispatch/autograd pattern, document the design pressure before special-casing it.
+**Goal:** first prove transformer training semantics on a tiny GPT-2-shaped
+model, then load a real pretrained GPT-2 SafeTensors checkpoint and reproduce
+reference inference results.
 
-## Model-Expansion Projects
+### Tiny GPT-2 Training Gate
 
-### Project D: MNIST CNN ⭐⭐⭐
+Train a deliberately small transformer to overfit a fixed tiny corpus. Compare
+forward intermediates, loss, selected parameter gradients, and update results
+against an independent reference implementation. This gate proves that the
+transformer operations and autograd rules compose; it does not claim practical
+GPT-2-scale training.
 
-**Prerequisites:** Modules 9-10 and Project A.
+### Real GPT-2 Inference Gate
 
-**Goal:** train a small CNN on MNIST to greater than 98% validation accuracy.
+Use Python SafeTensors tooling to validate, rename, transpose, and convert
+external weights as necessary, then load them through comtam's public Python
+API. Initially keep SafeTensors parsing, tokenization, model download, and
+checkpoint conversion outside the C++ tensor core.
 
-This project may earn padding, window extraction/im2col, batched matmul,
-`conv2d`, and pooling. Add them one at a time with forward/gradient oracles; do
-not start by building a general convolution subsystem.
+On fixed token IDs, compare selected intermediate activations, final logits,
+and deterministic generated token IDs with a pinned trusted reference. Record
+checkpoint identity, conversion rules, tolerances, memory use, and end-to-end
+latency.
 
-**Gate:** deterministic multi-epoch convergence, complete new-op conformance
-rows, and a performance comparison identifying whether im2col materialization or
-matmul dominates.
+Native SafeTensors support or full-size GPT-2 training requires a separate
+measured product need. Neither is part of this capstone gate.
 
-### Project E: Tiny Transformer Inference ⭐⭐⭐
+## Release Candidate Rehearsal
 
-**Prerequisites:** Modules 10-13.
+**Prerequisite:** Module 15. Repeat after each capstone that broadens the claimed
+supported workload.
 
-**Goal:** run one small, fixed transformer-like inference workload from a saved
-checkpoint.
+Prove another clean machine or environment can consume native and Python
+artifacts alone. Install the release candidate, run documentation examples,
+load the currently supported model, execute its acceptance scenario, run
+compatibility fixtures, and archive benchmark/version reports with checksums.
 
-Expected pressure includes batched matmul, embeddings/gather, softmax, layer
-normalization, integer token indices, causal masking, and persistence. This
-project earns an integer dtype only when its storage, transfer, validation,
-operator, serialization, and Python semantics are all implemented.
+This rehearsal is a supporting product gate rather than a fourth model
+capstone. A successful Module 15 rehearsal covers the MLP-era product; CNN and
+GPT-2 support are not release claims until their own rehearsals pass.
 
-**Gate:** compare intermediate activations and final logits to an independent
-reference on fixed tokens, then record memory and latency for the complete
-sequence.
+## Scope Boundaries
 
-Do not add tokenization or model downloading to the tensor core. Conversion and
-fixtures belong in tools/examples.
+The sequential track does not authorize broad API accumulation. Every new
+operation needs a real capstone call site, an independent forward oracle, a
+numerical gradient test when differentiable, scalar/empty/layout coverage, and
+Python coverage after Module 14.
 
-## Product Projects
-
-### Project F: Python Training Package ⭐⭐⭐
-
-**Prerequisite:** Module 14.
-
-**Goal:** reproduce Project A through the installed Python API without calling
-internal extension symbols.
-
-**Gate:** a clean environment installs the built wheel, trains or loads the MLP,
-passes the accuracy target, saves a checkpoint that C++ can read, and exits
-without retained native state. NumPy is the forward oracle; native and Python
-parameter names/values must agree.
-
-### Project G: Release Candidate Rehearsal ⭐⭐⭐
-
-**Prerequisite:** Module 15.
-
-**Goal:** prove another machine/environment can consume the narrow supported
-runtime from artifacts alone.
-
-**Gate:** native package and Python wheel install from the release candidate,
-documentation examples run, the supported model loads and infers, compatibility
-fixtures pass, and benchmark/version reports are archived with checksums.
-
-## Choosing A Project
-
-Choose the smallest project that forces a capability you genuinely want. Project
-A validates the core, Project B deepens autograd understanding, Project C widens
-operators, Projects D/E widen model scope, and Projects F/G validate the Python
-and release surfaces. Completing all of them is not a course requirement.
+Multiple backends, distributed execution, lazy graphs, graph compilers, broad
+PyTorch/NumPy compatibility, tokenization, and model downloading remain outside
+the framework core. Add a second dtype only when its storage, transfer,
+validation, operator, persistence, and Python semantics are specified and
+tested together.

@@ -38,6 +38,14 @@ supported public semantics
   -> measurement-driven performance
   -> Python API
   -> packaging, CI, and release evidence
+
+Phase III: Sequential Model Capstones
+
+MLP acceptance
+  -> CNN operator foundations and training
+  -> transformer operator foundations
+  -> tiny GPT-2 training
+  -> real GPT-2 checkpoint interoperability and inference
 ```
 
 Phase I teaches how a tensor framework works. Phase II teaches why a working
@@ -56,7 +64,7 @@ The following are deferred during Modules 1-9, not rejected forever:
 - A second dtype, earned only by a concrete workload with complete storage,
   transfer, validation, op, and persistence semantics.
 
-These remain outside the complete course unless a new product goal changes the
+These remain outside the course unless a measured capstone need changes the
 scope:
 
 - multiple backends or dynamic backend loading
@@ -155,6 +163,21 @@ Phase II completion supports a narrow claim: production-quality for the tested
 Apple Silicon, Metal, float32, eager workload. It does not imply general-purpose
 PyTorch or Magnetron feature parity.
 
+## Phase III: Sequential Model Capstones
+
+After the Module 15 release gate, follow the capstones in
+[`PROJECTS.md`](PROJECTS.md) sequentially. Modules 16-18 teach the reusable
+mechanisms required by the CNN and GPT-2 capstones; the capstones then prove
+those mechanisms compose into real workloads.
+
+16. [`MODULE_16.md`](MODULE_16.md) - CNN operator foundations
+17. [`MODULE_17.md`](MODULE_17.md) - transformer operator foundations
+18. [`MODULE_18.md`](MODULE_18.md) - real GPT-2 checkpoint interoperability
+
+Real GPT-2 inference through the public Python API is the final target. Tiny
+GPT-2 training is a correctness gate; practical full-size GPT-2 training remains
+outside the required track.
+
 ## Module Map
 
 | Module | Topic | Gate question |
@@ -174,6 +197,9 @@ PyTorch or Magnetron feature parity.
 | [`MODULE_13.md`](MODULE_13.md) | Performance | Is each kept optimization supported by repeatable measurement? |
 | [`MODULE_14.md`](MODULE_14.md) | Python API | Does Python preserve the native runtime's identity and semantics? |
 | [`MODULE_15.md`](MODULE_15.md) | Release | Can clean external consumers install and run supported artifacts? |
+| [`MODULE_16.md`](MODULE_16.md) | CNN foundations | Do the fixed CNN's new operations and gradients match independent oracles? |
+| [`MODULE_17.md`](MODULE_17.md) | Transformer foundations | Does a complete tiny GPT-2 block match forward, backward, and update references? |
+| [`MODULE_18.md`](MODULE_18.md) | GPT-2 interoperability | Can public Python APIs load a real checkpoint and reproduce reference inference? |
 
 ## Progress
 
@@ -184,7 +210,7 @@ PyTorch or Magnetron feature parity.
 | [`MODULE_3.md`](MODULE_3.md) | Passed | build; CTest | Verified 2026-07-01; grading in [`../solution/MODULE_3.md`](../solution/MODULE_3.md). |
 | [`MODULE_4.md`](MODULE_4.md) | Passed | build; CTest | Verified 2026-07-01; grading in [`../solution/MODULE_4.md`](../solution/MODULE_4.md). |
 | [`MODULE_5.md`](MODULE_5.md) | In progress | broadcast/matmul tests; reduction WIP | Gate remains open; grading in [`../solution/MODULE_5.md`](../solution/MODULE_5.md). |
-| Modules 6-15 | Not started | - | Start only after the preceding module gate passes. |
+| Modules 6-18 | Not started | - | Start only after the preceding module or capstone gate passes. |
 
 Keep this table compact. Assignment-level answers, commands, grading, missing
 tests, and pass/fail reasoning belong in the matching `docs/solution/MODULE_N.md`.

@@ -110,6 +110,10 @@ measurement-driven perf, then a narrow Python API — earned after the C++ core
 stops being a science fair project. Not assumed. Not "we'll bind it later and
 cry."
 
+**Phase III — Sequential Capstones** (Modules 16–18): CNN operator foundations
+and training, transformer foundations and tiny-model training, then verified
+real GPT-2 inference through the public Python API.
+
 This is a learning kitchen that still wants to ship edible food. Bring an
 appetite for ownership. Leave the seventeen sauces at the door.
 
