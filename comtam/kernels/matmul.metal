@@ -30,8 +30,8 @@ kernel void matmul(
             uint src1_id = k * N + col;
 
             // get physical index
-            uint src0_pid = physical_offset(src0_id, view_src0);
-            uint src1_pid = physical_offset(src1_id, view_src1);
+            int64_t src0_pid = physical_offset(src0_id, view_src0);
+            int64_t src1_pid = physical_offset(src1_id, view_src1);
 
             // calculate sum
             sum += src0[src0_pid] * src1[src1_pid];

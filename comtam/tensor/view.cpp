@@ -43,29 +43,28 @@ view_int view::numel() const {
     return std::reduce(shape.begin(), shape.end(), view_int{1}, std::multiplies<>());
 }
 
-size_t view::physical_offset(size_t linear_index) const {
+size_int view::physical_offset(view_int linear_index) const {
     // linear index shouldn't be larger than number of elements
-    COMTAM_CHECK_AND_THROW(linear_index < static_cast<size_t>(numel()), std::invalid_argument,
+    COMTAM_CHECK_AND_THROW(linear_index < numel(), std::invalid_argument,
                            "View::physical_offset: linear index is out of bounds");
 
     if (shape.empty()) {
-        return static_cast<size_t>(offset);
+        return static_cast<size_int>(offset);
     }
 
     // if tensor is already contiguous
     if (is_contiguous()) {
-        return linear_index + static_cast<size_t>(offset);
+        return static_cast<size_int>(linear_index + offset);
     }
 
     // tensor isn't contiguous
     view_vector dec(shape.size());
 
-    // we traverse in reverse
-    // decompose linear index first
-    size_t tmp = linear_index;
-    for (size_t i = shape.size(); i-- > 0;) {
-        dec[i] = static_cast<view_int>(tmp % static_cast<size_t>(shape[i]));
-        tmp /= static_cast<size_t>(shape[i]);
+    /* we traverse in reverse: decompose linear index first */
+    view_int tmp = linear_index;
+    for (view_int i = static_cast<view_int>(shape.size()) - 1; i >= 0; --i) {
+        dec[static_cast<size_t>(i)] = tmp % shape[static_cast<size_t>(i)];
+        tmp /= shape[static_cast<size_t>(i)];
     }
 
     // then calculate physical offset
@@ -74,7 +73,7 @@ size_t view::physical_offset(size_t linear_index) const {
         result += dec[i] * strides[i];
     }
 
-    return static_cast<size_t>(result);
+    return static_cast<size_int>(result);
 }
 
 view view::permute(const view_vector& new_axis) const {
@@ -144,7 +143,7 @@ view view::shrink(const pair_view_vector& limits) const {
 
 view view::expand(const view_vector& new_shape) const {
     view_int new_ndim = static_cast<view_int>(new_shape.size());
-    view_int current_ndim = static_cast<view_int>(dim());  // so the loop index can be negative
+    view_int current_ndim = dim();  // so the loop index can be negative
 
     COMTAM_CHECK_AND_THROW(new_ndim >= current_ndim, std::invalid_argument,
                            "expand shape cannot have fewer dimensions");
@@ -191,19 +190,19 @@ view_vector view::broadcast_shape(const view& lhs, const view& rhs) {
     view_vector big = (lhs.dim() >= rhs.dim()) ? lhs.shape : rhs.shape;
     view_vector small = (lhs.dim() >= rhs.dim()) ? rhs.shape : lhs.shape;
 
-    const size_t ndim = big.size();
-    const size_t offset = ndim - small.size();  // small is left-padded with 1s
+    const view_int ndim = static_cast<view_int>(big.size());
+    const view_int offset = ndim - static_cast<view_int>(small.size());  // small is left-padded with 1s
 
-    view_vector new_shape(ndim);
+    view_vector new_shape(static_cast<size_t>(ndim));
 
-    for (size_t i = ndim; i-- > 0;) {
-        size_t a = big[i];
-        size_t b = (i >= offset) ? small[i - offset] : 1;
+    for (view_int i = ndim - 1; i >= 0; --i) {
+        view_int a = big[static_cast<size_t>(i)];
+        view_int b = (i >= offset) ? small[static_cast<size_t>(i - offset)] : 1;
 
         if (a != b && a != 1 && b != 1) {
             COMTAM_THROW_ERROR(std::runtime_error, "Both shapes aren't compatible for broadcast");
         }
-        new_shape[i] = std::max(a, b);
+        new_shape[static_cast<size_t>(i)] = std::max(a, b);
     }
 
     return new_shape;

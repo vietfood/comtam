@@ -20,6 +20,7 @@
 #include "Metal/MTLDevice.hpp"
 #include "comtam/core/storage.h"
 #include "comtam/macros/log.h"
+#include "comtam/types.h"
 
 namespace comtam::core {
 struct command_desc;
@@ -40,11 +41,11 @@ class metal_device {
     MTL::CommandQueue* queue() { return command_queue_.get(); }
 
     // methods for storage
-    storage allocate(size_t bytes);
+    storage allocate(size_int bytes);
 
     template <typename T>
-    void copy(const T* data, size_t count, storage& storage) {
-        const size_t bytes = count * sizeof(T);
+    void copy(const T* data, size_int count, storage& storage) {
+        const size_int bytes = count * sizeof(T);
         COMTAM_CHECK_AND_THROW(bytes == storage.size(), std::runtime_error,
                                "Data size does not match storage size");
         std::memcpy(storage.ptr()->contents(), data, bytes);
@@ -52,8 +53,8 @@ class metal_device {
     }
 
     template <typename T>
-    void copy(storage& storage, T* data, size_t count) {
-        const size_t bytes = count * sizeof(T);
+    void copy(storage& storage, T* data, size_int count) {
+        const size_int bytes = count * sizeof(T);
         COMTAM_CHECK_AND_THROW(bytes == storage.size(), std::runtime_error,
                                "Data size does not match storage size");
         std::memcpy(data, storage.ptr()->contents(), bytes);

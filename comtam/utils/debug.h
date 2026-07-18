@@ -22,13 +22,13 @@
 #include "comtam/macros/macros.h"
 
 namespace comtam::utils {
-COMTAM_INLINE std::string format_arr4(const int64_t arr[4]) {
+COMTAM_INLINE std::string format_arr4(const view_int arr[4]) {
     return fmt::format("({}, {}, {}, {})", arr[0], arr[1], arr[2], arr[3]);
 }
 
 COMTAM_INLINE std::string format_view_vector(const view_vector& vec) {
     std::string out = "[";
-    for (std::size_t i = 0; i < vec.size(); ++i) {
+    for (size_int i = 0; i < vec.size(); ++i) {
         out += fmt::format("{}{}", vec[i], (i + 1 < vec.size()) ? ", " : "");
     }
     out += "]";

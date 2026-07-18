@@ -18,11 +18,12 @@
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLBuffer.hpp"
 #include "comtam/macros/log.h"
+#include "comtam/types.h"
 
 namespace comtam::core {
 class storage {
    public:
-    storage(size_t bytes, MTL::Device* device);
+    storage(size_int bytes, MTL::Device* device);
     ~storage() = default;
 
     // move constructor
@@ -40,13 +41,13 @@ class storage {
     storage(const storage& other) = delete;
     storage& operator=(const storage& other) = delete;
 
-    size_t size() const { return size_; }
+    size_int size() const { return size_; }
     MTL::Buffer* ptr() { return buffer_.get(); }
     const MTL::Buffer* ptr() const { return buffer_.get(); }
 
     template <typename T>
-    T at(size_t index) const {
-        const size_t byte_offset = index * sizeof(T);
+    T at(size_int index) const {
+        const size_int byte_offset = index * sizeof(T);
         COMTAM_CHECK_AND_THROW(byte_offset + sizeof(T) <= size_, std::runtime_error,
                                "Storage index out of bounds");
         return static_cast<const T*>(buffer_->contents())[index];
@@ -55,7 +56,7 @@ class storage {
     void print(const std::string& label) const;
 
    private:
-    size_t size_;
+    size_int size_;
     NS::SharedPtr<MTL::Buffer> buffer_;
 };
 }  // namespace comtam::core

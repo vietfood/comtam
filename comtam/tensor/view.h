@@ -12,12 +12,12 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <utility>
 #include <vector>
 
+#include "comtam/types.h"
+
 namespace comtam {
-using view_int = int64_t;
 using view_vector = std::vector<view_int>;
 using pair_view_vector = std::vector<std::pair<view_int, view_int>>;
 
@@ -39,12 +39,15 @@ struct view {
     // --- Getter ---
     bool is_contiguous() const { return strides == ref_strides; }
 
-    size_t dim() const { return shape.size(); }
+    view_int dim() const { return static_cast<view_int>(shape.size()); }
 
     view_int numel() const;
 
-    // returns offset + sum(coord[d] * strides[d]) for a flat linear index
-    size_t physical_offset(size_t linear_index) const;
+    /*
+     * Returns offset + sum(coord[d] * strides[d]) for a flat linear index.
+     * Logical index in (view_int), physical storage offset out (size_int).
+     */
+    size_int physical_offset(view_int linear_index) const;
 
     // --- Methods ---
 

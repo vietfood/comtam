@@ -69,7 +69,7 @@ metal_device::metal_device() {
                            "Failed to create Metal command queue");
 }
 
-storage metal_device::allocate(size_t bytes) {
+storage metal_device::allocate(size_int bytes) {
     COMTAM_CHECK_AND_THROW(bytes != 0, std::runtime_error, "Cannot allocate 0 bytes");
     return storage(bytes, this->get());
 }

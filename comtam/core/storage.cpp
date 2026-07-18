@@ -20,7 +20,7 @@
 
 using namespace comtam::core;
 
-storage::storage(size_t bytes, MTL::Device* device) : size_(bytes) {
+storage::storage(size_int bytes, MTL::Device* device) : size_(bytes) {
     buffer_ = NS::TransferPtr(device->newBuffer(bytes, MTL::ResourceStorageModeShared));
 
     if (!buffer_) {

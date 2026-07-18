@@ -19,10 +19,10 @@
 
 using namespace comtam;
 
-std::vector<size_t> gather_offsets(const view& view) {
-    std::vector<size_t> offsets;
-    offsets.reserve(static_cast<size_t>(view.numel()));
-    for (size_t i = 0; i < static_cast<size_t>(view.numel()); ++i) {
+std::vector<size_int> gather_offsets(const view& view) {
+    std::vector<size_int> offsets;
+    offsets.reserve(static_cast<size_int>(view.numel()));
+    for (view_int i = 0; i < view.numel(); ++i) {
         offsets.push_back(view.physical_offset(i));
     }
     return offsets;

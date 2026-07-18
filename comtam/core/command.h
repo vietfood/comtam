@@ -20,6 +20,7 @@
 #include "comtam/tensor/dtype.h"
 #include "comtam/tensor/op.h"
 #include "comtam/tensor/view.h"
+#include "comtam/types.h"
 #include "comtam/utils/common.h"
 
 namespace comtam::core {
@@ -61,18 +62,23 @@ struct kernel_desc {
     DType dtype;
 };
 
-// for view and index construction in kernel
+/*
+ * for view and index construction in kernel
+ *
+ * Layout must match kernels/utils.h ViewInfo exactly: this struct is sent
+ * raw via setBytes and reinterpreted as `constant ViewInfo&` on the GPU side.
+ */
 struct view_desc {
-    size_t N;
-    int64_t shape[4];
-    int64_t strides[4];
-    long offset;
+    size_int N;
+    view_int shape[4];
+    view_int strides[4];
+    view_int offset;
     bool contiguous;
 
     static view_desc from_view(const view& view) {
         view_desc res;
 
-        res.N = static_cast<size_t>(view.numel());
+        res.N = static_cast<size_int>(view.numel());
         res.offset = view.offset;
         res.contiguous = view.is_contiguous();
 
@@ -87,18 +93,19 @@ struct view_desc {
     }
 };
 
-// each input will have data buffer
-// and view information
+/* each input will have a data buffer and view information */
 struct input_desc {
     storage* storage;
     view_desc view;
 };
 
-// A command will have
-// - a kernel  (Op + DType)
-// - two input info (a, b)
-// - an output info (out)
-// Warning: we assume this is BinaryCommand
+/*
+ * A command will have:
+ * - a kernel  (Op + DType)
+ * - two input info (a, b)
+ * - an output info (out)
+ * Warning: we assume this is BinaryCommand
+ */
 struct command_desc {
     kernel_desc kernel;
     input_desc a;

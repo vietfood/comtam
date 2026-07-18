@@ -30,8 +30,8 @@ class tensor {
             }
 
             // create a storage from device first
-            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_t>(view_.numel()));
-            device.copy<scalar_t>(data, static_cast<size_t>(view_.numel()), buffer);
+            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_int>(view_.numel()));
+            device.copy<scalar_t>(data, static_cast<size_int>(view_.numel()), buffer);
 
             // then wrap to shared_ptr
             storage_ = std::make_shared<core::storage>(std::move(buffer));
@@ -47,7 +47,7 @@ class tensor {
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             // we create an empty buffer
-            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_t>(view_.numel()));
+            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_int>(view_.numel()));
             storage_ = std::make_shared<core::storage>(std::move(buffer));
         });
     }
@@ -55,7 +55,7 @@ class tensor {
     tensor(const view& view, core::metal_device& device, DType dtype = DType::Float32)
         : dtype_(dtype), view_(view), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
-            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_t>(view_.numel()));
+            auto buffer = device.allocate(sizeof(scalar_t) * static_cast<size_int>(view_.numel()));
             storage_ = std::make_shared<core::storage>(std::move(buffer));
         });
     }
@@ -71,7 +71,7 @@ class tensor {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
             // we must ensure the storage byte match the Tensor
             COMTAM_CHECK_AND_THROW(
-                sizeof(scalar_t) * static_cast<size_t>(view_.numel()) == storage->size(),
+                sizeof(scalar_t) * static_cast<size_int>(view_.numel()) == storage->size(),
                 std::runtime_error, "Storage size doesn't match dtype and shape");
             // then we only need to set target
             storage_ = storage;
@@ -81,8 +81,10 @@ class tensor {
     tensor(const std::shared_ptr<core::storage>& storage, const view& view,
            DType dtype = DType::Float32)
         : dtype_(dtype), view_(view), storage_(nullptr) {
-        // A view can have a different logical numel from its aliased storage.
-        // Readback uses View::physical_offset to map logical indices to storage.
+        /*
+         * A view can have a different logical numel from its aliased storage.
+         * Readback uses View::physical_offset to map logical indices to storage.
+         */
         storage_ = storage;
     }
 
@@ -100,7 +102,7 @@ class tensor {
             COMTAM_CHECK_AND_THROW(storage_, std::runtime_error,
                                    "Tensor::from_vector: storage is not allocated");
 
-            auto numel = static_cast<size_t>(view_.numel());
+            auto numel = static_cast<size_int>(view_.numel());
             COMTAM_CHECK_AND_THROW(data.size() == numel, std::runtime_error,
                                    "Tensor::from_vector: data size does not match tensor size");
 
@@ -130,10 +132,10 @@ class tensor {
             COMTAM_CHECK_AND_THROW(storage_, std::runtime_error,
                                    "Tensor::to_vector: storage is not allocated");
 
-            std::vector<scalar_t> result(static_cast<size_t>(view_.numel()));
+            std::vector<scalar_t> result(static_cast<size_int>(view_.numel()));
             // instead of copy, we must gather the data for "the correct shape"
-            for (size_t i = 0; i < result.size(); ++i) {
-                result[i] = storage_->at<scalar_t>(view_.physical_offset(i));
+            for (size_int i = 0; i < result.size(); ++i) {
+                result[i] = storage_->at<scalar_t>(view_.physical_offset(static_cast<view_int>(i)));
             }
             return result;
         });
@@ -143,8 +145,8 @@ class tensor {
         return to_vector<float>(device);
     }
 
-    size_t numel() const { return static_cast<size_t>(view_.numel()); }
-    size_t dim() const { return view_.dim(); }
+    size_int numel() const { return static_cast<size_int>(view_.numel()); }
+    size_int dim() const { return static_cast<size_int>(view_.dim()); }
     view_vector shape() const { return view_.shape; }
     view_vector strides() const { return view_.strides; }
     DType dtype() const { return dtype_; }
