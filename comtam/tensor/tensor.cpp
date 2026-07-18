@@ -5,6 +5,7 @@
 #include "comtam/core/command.h"
 #include "comtam/core/context.h"
 #include "comtam/macros/log.h"
+#include "comtam/tensor/op.h"
 #include "comtam/utils/debug.h"
 
 using namespace comtam;
@@ -87,8 +88,12 @@ tensor tensor::matmul(const tensor& a, const tensor& b, core::context& ctx) {
 
     tensor out({a.shape()[0], b.shape()[1]}, device, a.dtype_);
 
+    // check contiguous
+    bool is_contiguous = a.view_.is_contiguous() && b.view_.is_contiguous();
+    OpVariant variant = is_contiguous ? OpVariant::CONTIGUOUS : OpVariant::STRIDED;
+
     core::command_desc cmd = {
-        .kernel = {.op = Op::MATMUL, .dtype = a.dtype_},
+        .kernel = {.op = Op::MATMUL, .dtype = a.dtype_, .variant = variant},
         .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
         .b = {.storage = b.storage_.get(), .view = core::view_desc::from_view(b.view_)},
         .out_buffer = out.storage_.get()};

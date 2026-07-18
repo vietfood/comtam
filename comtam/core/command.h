@@ -37,11 +37,27 @@ COMTAM_INLINE std::string op2kernel(const Op& op) {
         case Op::MATMUL:
             return "matmul";
         case Op::SUM:
-            return "reduction_sum";
+            return "reduce_sum";
         case Op::MAX:
-            return "reduction_min";
+            return "reduce_max";
     }
     COMTAM_THROW_ERROR(std::runtime_error, "op isn't supported by kernel");
+}
+
+COMTAM_INLINE std::string op_variant2kernel(const OpVariant& variant) {
+    switch (variant) {
+        case OpVariant::FULL:
+            return "full";
+        case OpVariant::AXIS:
+            return "axis";
+        case OpVariant::CONTIGUOUS:
+            return "contiguous";
+        case OpVariant::STRIDED:
+            return "strided";
+        case OpVariant::NONE:
+            return "";
+    }
+    COMTAM_THROW_ERROR(std::runtime_error, "op variant isn't supported by kernel");
 }
 
 COMTAM_INLINE std::string dtype2kernel(const DType& dtype) {
@@ -59,7 +75,13 @@ COMTAM_INLINE bool is_reduce_op(const Op& op) {
 // a kernel is represented by an op and an dtype
 struct kernel_desc {
     Op op;
-    DType dtype;
+    DType dtype = DType::Float32;
+    OpVariant variant = OpVariant::NONE;
+
+    std::string name() const {
+        return op2kernel(op) + "_" + op_variant2kernel(variant) +
+               (variant != OpVariant::NONE ? "_" : "") + dtype2kernel(dtype);
+    }
 };
 
 /*

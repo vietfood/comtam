@@ -24,4 +24,12 @@ enum class Op {
     SUM,
     MAX
 };
+
+enum class OpVariant {
+    NONE,
+    FULL,
+    AXIS,
+    CONTIGUOUS,
+    STRIDED,
+};
 }  // namespace comtam

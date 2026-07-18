@@ -76,8 +76,7 @@ storage metal_device::allocate(size_int bytes) {
 
 void metal_device::submit_bop(const command_desc& command, kernel_library& kernels) {
     submit_compute(command_queue_.get(), command, kernels, [&](auto* encoder, auto* pipeline) {
-        const std::string kernel_name =
-            op2kernel(command.kernel.op) + "_" + dtype2kernel(command.kernel.dtype);
+        const std::string kernel_name = command.kernel.name();
 
         // set storage first
         encoder->setBuffer(command.a.storage->ptr(), 0, 0);
@@ -112,8 +111,8 @@ void metal_device::submit_matmul(const command_desc& command, kernel_library& ke
     COMTAM_ASSERT(command.kernel.op == Op::MATMUL, "submit_matmul is for matmul op only");
 
     submit_compute(command_queue_.get(), command, kernels, [&](auto* encoder, auto* pipeline) {
-        const std::string kernel_name =
-            op2kernel(command.kernel.op) + "_" + dtype2kernel(command.kernel.dtype);
+        (void)pipeline;  // threadExecutionWidth is not used; BLOCK_SIZE is a fixed kernel contract.
+        const std::string kernel_name = command.kernel.name();
 
         // set storage first
         encoder->setBuffer(command.a.storage->ptr(), 0, 0);
@@ -124,9 +123,9 @@ void metal_device::submit_matmul(const command_desc& command, kernel_library& ke
         encoder->setBytes(&command.a.view, sizeof(view_desc), 3);
         encoder->setBytes(&command.b.view, sizeof(view_desc), 4);
 
-        // we also need to set blocksize
-        auto w = pipeline->threadExecutionWidth();
-        encoder->setBytes(&w, sizeof(NS::UInteger), 5);
+        // TODO: Needs to be set based on kernel variant
+        constexpr NS::UInteger BLOCK_SIZE = 16;
+        encoder->setBytes(&BLOCK_SIZE, sizeof(NS::UInteger), 5);
 
         COMTAM_LOG_DEBUG(
             "submit kernel={}\na: {}\nb: {}\nstorage_bytes=(a={}, b={}, out={})\nview_bytes={}\n",
@@ -137,13 +136,15 @@ void metal_device::submit_matmul(const command_desc& command, kernel_library& ke
         auto M = command.a.view.shape[0];
         auto N = command.b.view.shape[1];
 
-        MTL::Size group_size = MTL::Size(w, w, 1);
-        MTL::Size grid_size = MTL::Size(CEIL_DIV(N, w), CEIL_DIV(M, w), 1);
+        // One threadgroup computes one BLOCK_SIZE x BLOCK_SIZE output tile.
+        // Grid is sized in tiles, not in hardware SIMD width.
+        MTL::Size group_size = MTL::Size(BLOCK_SIZE, BLOCK_SIZE, 1);
+        MTL::Size grid_size = MTL::Size(CEIL_DIV(N, BLOCK_SIZE), CEIL_DIV(M, BLOCK_SIZE), 1);
 
         COMTAM_LOG_DEBUG(
-            "submit dispatch:\nN={}\nthread_width={}\nthreads=({}, {}, {})\n"
+            "submit dispatch:\nN={}\nblock_size={}\nthreads=({}, {}, {})\n"
             "threads_per_group=({}, {}, {})\n",
-            command.a.view.N, w, grid_size.width, grid_size.height, grid_size.depth,
+            command.a.view.N, BLOCK_SIZE, grid_size.width, grid_size.height, grid_size.depth,
             group_size.width, group_size.height, group_size.depth);
 
         encoder->dispatchThreadgroups(grid_size, group_size);
