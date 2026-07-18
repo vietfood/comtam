@@ -14,10 +14,34 @@ project(comtam LANGUAGES CXX)
 option(COMTAM_BUILD_TESTS "Build comtam tests" OFF)
 option(COMTAM_BUILD_METALLIB "Compile Metal kernels into a default.metallib" ON)
 option(COMTAM_MLX_C_PREFER_SYSTEM_MLX "Prefer an installed MLX package when building mlx-c" ON)
+option(COMTAM_ENABLE_SANITIZERS
+  "Build comtam with AddressSanitizer and UndefinedBehaviorSanitizer (host only)"
+  OFF)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Host-side sanitizers for comtam targets. Does not sanitize Metal GPU memory.
+add_library(comtam_sanitizers INTERFACE)
+if(COMTAM_ENABLE_SANITIZERS)
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    message(FATAL_ERROR
+      "COMTAM_ENABLE_SANITIZERS requires AppleClang, Clang, or GNU "
+      "(got ${CMAKE_CXX_COMPILER_ID})")
+  endif()
+  message(STATUS
+    "comtam: enabling AddressSanitizer + UndefinedBehaviorSanitizer "
+    "(host CPU only; Metal GPU buffers are not instrumented)")
+  target_compile_options(comtam_sanitizers INTERFACE
+    -fsanitize=address,undefined
+    -fno-omit-frame-pointer
+    -g
+  )
+  target_link_options(comtam_sanitizers INTERFACE
+    -fsanitize=address,undefined
+  )
+endif()
 
 set(FMT_MASTER_PROJECT OFF CACHE BOOL "" FORCE)
 set(FMT_DOC OFF CACHE BOOL "" FORCE)

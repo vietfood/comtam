@@ -59,6 +59,7 @@ target_link_libraries(comtam_lib
   PUBLIC
     fmt::fmt-header-only
     metal_cpp
+    comtam_sanitizers
 )
 
 file(GLOB COMTAM_METAL_KERNELS CONFIGURE_DEPENDS
