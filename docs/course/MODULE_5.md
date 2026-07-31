@@ -1,29 +1,37 @@
 ## Module 5: Broadcasting, Reductions, And Matmul
 
-Add the shape-changing ops that real models need, and that autograd will depend
-on.
+Add the shape-changing forward operations that real models need. Keep the
+existing public arithmetic surface working here; mandatory Module 5A will
+consolidate its primitive/composed boundary before autograd begins.
 
 ## Module Contract
 
 **Prerequisite:** Module 4 has independent forward-oracle coverage and a
 current correctness map. **Deliverables:** `broadcast_shapes`, broadcasted
-float32 binary ops using strided input views, full and axis `sum`, axis `mean`,
-and naive 2-D `matmul` that reads strided inputs. Every new operation requires a
-CPU-oracle correctness test and an updated Module 4 correctness map.
+float32 `add`/`sub`/`mul`/`div` using strided input views, full and axis `sum`,
+full and axis `mean`, and naive 2-D `matmul` that reads strided inputs. Every
+new operation requires public API correctness tests and an updated Module 4
+correctness map.
 
-Supported scope is right-aligned NumPy-style broadcasting, rank-0 scalar
-tensors, positive-sized dimensions, non-negative axes, and 2-D matmul only.
-Zero-sized dimensions must reject clearly in this module because the current
-storage layer forbids zero-byte allocation; Module 9 revisits empty-tensor
-semantics deliberately. Negative axes, batched matmul, dtype promotion, implicit
-materialization, tiling, threadgroup-memory optimization, and fusion are also
-unsupported. Completion evidence is CTest coverage of the matrix below and the
-simplest correct kernels; optimization remains out of scope even if a benchmark
-is slow.
+Supported scope is right-aligned NumPy-style broadcasting, rank-0 through
+rank-4 tensors, positive-sized dimensions, non-negative axes, and 2-D matmul
+only. Rank above four must reject before conversion to the fixed-size GPU view
+descriptor. Zero-sized dimensions must reject before allocation or dispatch
+because the current storage layer forbids zero-byte allocation; Module 9
+revisits empty-tensor semantics deliberately. Negative axes, batched matmul,
+dtype promotion, implicit materialization, and fusion are unsupported.
+
+Use an independent oracle appropriate to the claim: MLX-C is preferred for
+framework shape and value semantics, while a transparent manual CPU loop is
+appropriate for broadcast indexing, reduction, and tiny matmul cross-checks.
+Record which oracle each test uses. Completion evidence is CTest coverage of
+the matrix below and the simplest correct reference kernels. An already-present
+optimized path does not replace the required simple correctness path or earn a
+performance claim without Module 13 measurements.
 
 | Area | Required evidence |
 | --- | --- |
-| Broadcast binary ops | compatible asymmetric ranks, scalar operand, incompatible shapes, and zero-extent rejection |
+| Broadcast binary ops | all four public ops; compatible asymmetric ranks; scalar operand; non-contiguous input; incompatible shapes; rank-5 and zero-extent rejection |
 | Reductions | full scalar result, each valid axis with `keepdim` both false and true, invalid axis, and zero-extent rejection |
 | Matmul | ordinary 2-D case, either transposed input, bad rank/inner dimensions, and zero-extent rejection |
 
@@ -40,8 +48,14 @@ matmul         the core of every linear layer
 
 Each one stresses a different part of the runtime. Broadcasting stresses views.
 Reductions stress kernels that coordinate across threads. Matmul stresses
-layout. Get these right with oracles now, because Module 6 builds gradients on
-top of them.
+layout. Get these right with oracles now, because Module 5A consolidates their
+semantic surface and Module 6 builds gradients on top of it.
+
+Module 5A deliberately comes next. It will decide which of these public
+operations remain independently dispatched, define their numerical semantics,
+and expose a tested primitive surface to Module 6. Do not perform that
+consolidation opportunistically while reductions or broadcast correctness are
+still failing.
 
 ## Part A: Broadcasting
 
@@ -83,7 +97,9 @@ the expected error.
 
 ### Assignment 5.2: Make Binary Ops Broadcast ⭐⭐⭐
 
-**Task:** Extend the Module 3 binary ops to broadcast.
+**Task:** Extend all four Module 3 binary operations to broadcast. Module 5A
+will later change how `sub` and `div` are implemented; this gate first proves
+their public shape and value semantics independently of that refactor.
 
 Two designs:
 
@@ -102,9 +118,11 @@ This is the point where the binary kernel grows from "two contiguous arrays" to
 "two strided views and one contiguous output". Update `binary.metal` and the
 `Command` (or add a richer command) accordingly.
 
-**Test:** `(4, 3) + (3,)` and `(2, 1, 4) * (3, 1)` against a CPU broadcast
-oracle. Also test `() + (2, 3)`, an incompatible pair, and a zero-extent input
-that fails before allocation or dispatch with a clear unsupported-case error.
+**Test:** `(4, 3) + (3,)` and `(2, 1, 4) * (3, 1)` against an independent
+broadcast oracle, then apply the same public matrix to `sub` and `div`. Also
+test `() + (2, 3)`, a transposed or shrunk input, an incompatible pair, rank 5,
+and a zero-extent input that fails before allocation or dispatch with a clear
+unsupported-case error.
 
 ## Part B: Reductions
 
@@ -120,7 +138,8 @@ sum over an axis             (4, 5) sum axis=1 -> (4,)
 Elementwise ops are embarrassingly parallel: each output is independent.
 Reductions are not. Multiple threads must combine into one output, which needs
 coordination (threadgroup memory, atomics, or a tree). This is why a reduction
-is a different kind of kernel.
+needs its own execution path while `mean` does not: `mean` is one `sum` launch
+plus one scalar arithmetic operation, with no new coordination problem.
 
 ### Assignment 5.3: Implement Full Reduce `sum` ⭐⭐
 
@@ -144,9 +163,10 @@ not a length-one vector. Reject a zero-extent input before dispatch until Module
 
 ### Assignment 5.4: Implement Axis Reduce And `mean` ⭐⭐⭐
 
-**Task:** Add `sum(a, axis)` and `mean(a, axis)`.
+**Task:** Add `sum(a, axis)`, then implement full and axis `mean` from the
+corresponding `sum` result and scalar division. Do not add a `mean` kernel.
 
-Use an explicit API such as `sum(a, axis, keepdim = false)` and
+Use explicit APIs such as `mean(a)`, `sum(a, axis, keepdim = false)`, and
 `mean(a, axis, keepdim = false)`. `axis` is a non-negative integer in
 `[0, a.rank())`; reject negative and out-of-range axes rather than translating
 them. With `keepdim=false`, remove the reduced axis; with `keepdim=true`, retain
@@ -156,8 +176,9 @@ Questions:
 
 1. What is the output shape with and without a `keepdim` option? Pick one policy
    and apply it everywhere.
-2. Is `mean` just `sum` divided by the reduced count? Where should that division
-   happen, host or kernel?
+2. Is `mean` division by the reduced count? How is that count represented as a
+   rank-0 tensor, and what changes between full and axis mean? Module 5A will
+   later replace this composition without changing the public result.
 3. How does an axis reduce map threads to outputs when the reduced axis is not
    the innermost one?
 
@@ -165,9 +186,11 @@ Questions:
 it, and choose a single `keepdim` policy now. Inconsistent rank policies are a
 classic source of silent shape bugs.
 
-**Test:** Axis reductions on `(4, 5)` over axis 0 and axis 1, against CPU
-oracles. Cover both `keepdim` values, an invalid axis, a rank-0 axis error, and a
-zero-extent input that rejects before dispatch.
+**Test:** Full and axis reductions on `(4, 5)`, including axis 0 and axis 1,
+against independent oracles. Cover both `keepdim` values, an invalid axis, a
+rank-0 axis error, rank 5, and a zero-extent input that rejects before dispatch.
+Test `mean` at the public API level; its implementation strategy is invisible
+to the oracle.
 
 ## Part C: Matmul
 
@@ -182,6 +205,16 @@ C[m, n] = sum_k A[m, k] * B[k, n]
 It is not elementwise and not a simple reduce. Its performance depends entirely
 on memory layout, which is exactly why optimizing it is deferred to Module 13.
 Here you only need it correct.
+
+Matmul also explains why Module 5A cannot reduce every operation to a maximal
+composition. Luminal's frontend
+defines `matmul` as broadcast-`mul` over an expanded `(m, n, k)` intermediate
+followed by `sum_reduce` over `k` - mathematically identical, but the
+intermediate has `m*n*k` elements where the inputs had `m*k + k*n`. A lazy
+compiler can fuse that intermediate away before anything is allocated; an
+eager runtime would actually allocate and traffic it. Composition that changes
+the asymptotic memory cost is exactly what the budget forbids, so `matmul`
+stays a kernel.
 
 ### Assignment 5.5: Implement Naive 2-D Matmul ⭐⭐⭐
 
@@ -215,16 +248,20 @@ inner-dimension mismatch, and a zero-extent rejection.
 - [ ] 5.1 Implement `broadcast_shapes`.
 - [ ] 5.2 Make binary ops broadcast via expand + strided kernel.
 - [ ] 5.3 Implement full-reduce `sum`.
-- [ ] 5.4 Implement axis `sum`/`mean` with one keepdim policy.
+- [ ] 5.4 Implement full/axis `sum` and `mean` with one keepdim policy.
 - [ ] 5.5 Implement naive 2-D matmul, strided-input aware.
 
 ## Exit Criteria
 
-You are ready for Module 6 when:
+You are ready for mandatory Module 5A when:
 
-1. Broadcasted binary ops match a CPU oracle on asymmetric shapes.
-2. Full and axis reductions match CPU oracles within a justified tolerance.
+1. Broadcasted binary ops match independent oracles on asymmetric shapes.
+2. Full and axis reductions match independent oracles within a justified tolerance.
 3. Naive matmul matches a CPU triple loop, including a transposed input.
-4. Every new op has a correctness test, and the correctness map from Module 4 is
-   updated.
-5. No optimization has been added; every kernel is the simplest correct version.
+4. Full and axis `mean` match independent oracles at the public API.
+5. Rank above four, zero extents, incompatible shapes, invalid axes, and bad
+   matmul contracts reject before allocation or dispatch.
+6. Every new operation has a correctness test, and the correctness map from
+   Module 4 is updated with the oracle used.
+7. The simple correctness paths are retained and tested; an optimized path is
+   not accepted as correctness or performance evidence merely because it runs.

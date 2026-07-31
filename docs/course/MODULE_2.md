@@ -392,11 +392,15 @@ You will not implement these until Module 6, but understand the pairings now:
 | `reshape` | `reshape` back |
 | `permute` | inverse `permute` |
 | `expand` | `sum` over expanded (stride-0) dimensions |
-| `slice` / `shrink` | `pad` |
+| `slice` / `shrink` | materializing zero-padding |
 
 **Study prompt:** Why is the backward of `expand` a reduction? If element `a[i]`
 was read four times via a stride-0 axis, how many gradient contributions must it
 receive?
+
+Module 6 implements the last row with a narrow internal `zero_pad` kernel. A
+view alone cannot represent newly created zeros, while a general overlapping
+scatter would introduce semantics this rectangular inverse does not need.
 
 ## Assignment 2.9: Read Magnetron / tinygrad Views ⭐⭐⭐
 

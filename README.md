@@ -97,13 +97,16 @@ train without lying to yourself.
 | 3 | Eager Metal dispatch | Passed |
 | 4 | Forward correctness vs oracle | Passed |
 | **5** | **Broadcast / reduce / matmul** | **In progress** — gate still open |
-| 6–9 | Autograd → nn/SGD → MNIST → harden | Not started (wait for the gate) |
+| 5A | Primitive surface / composition / numerics | Blocked until Module 5 passes |
+| 6–9 | Autograd → nn/SGD → MNIST → harden | Not started (wait for Module 5A) |
 
 Current plate: Module 5. Binary ops and contiguous matmul already chew on Metal;
 broadcast edges, reduction completeness, and the full layout/validation matrix
 are still in the wok. Details and grading live in
 [`docs/solution/MODULE_5.md`](docs/solution/MODULE_5.md) and the progress table in
-[`docs/course/INDEX.md`](docs/course/INDEX.md).
+[`docs/course/INDEX.md`](docs/course/INDEX.md). After that gate, mandatory
+[`docs/course/MODULE_5A.md`](docs/course/MODULE_5A.md) consolidates the semantic
+primitive surface before autograd begins.
 
 **Phase II — Production Track** (Modules 10–15): async/lifetime, persistence,
 measurement-driven perf, then a narrow Python API — earned after the C++ core

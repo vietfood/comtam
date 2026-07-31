@@ -30,24 +30,35 @@ Supporting project docs:
 ## Appendix B: Reference Frameworks
 
 Use references after your own attempt, when you have a concrete question.
+Study guides for each live in [`../refs/`](../refs/).
 
-- `refs/magnetron` is the closest eager-runtime reference for tensor identity,
-  autograd, state dictionaries/snapshots, Python bindings, packaging, and the
-  cost of a much broader backend/dtype/operator scope.
-- `refs/banhxeo` is compiler-first and lazy. Use it to contrast scheduling and
-  code generation, not as a template for comtam's eager core.
-- `refs/legrad` shows why allocators, backend registries, and global runtime
-  ownership are harmful before a workload earns them.
+- `refs/magnetron` ([`../refs/MAGENETRON.md`](../refs/MAGENETRON.md)) is the
+  closest eager-runtime reference for tensor identity, autograd, state
+  dictionaries/snapshots, Python bindings, packaging, and the cost of a much
+  broader backend/dtype/operator scope.
+- `refs/mlx` ([`../refs/MLX.md`](../refs/MLX.md), with
+  [`MLX_KERNELS.md`](../refs/MLX_KERNELS.md) and
+  [`MLX_REDUCTION.md`](../refs/MLX_REDUCTION.md)) is the production Apple GPU
+  kernel reference: kernel organization, naming, and reduction design.
+- `refs/luminal` ([`../refs/LUMINAL.md`](../refs/LUMINAL.md), with
+  [`LUMINAL_METAL.md`](../refs/LUMINAL_METAL.md)) is the compiler-first
+  counterpoint. Read it for the RISC-style primitive op set behind Module 5A's
+  semantic-surface audit and for its production Metal backend, not as an architecture
+  template - its lazy graph, e-graph search, and symbolic shapes are exactly
+  what comtam's eager thesis excludes.
 
 Suggested reading order:
 
 1. Trace Magnetron storage/tensor/view ownership after Modules 1-2.
 2. Trace one API-to-kernel dispatch after Module 3.
-3. Read dynamic autograd only after attempting Module 6.
-4. Read state/snapshot code only after writing Module 12's format contract.
-5. Read bindings and Python package structure only after defining Module 14's
+3. Read Luminal's primitive op set and frontend compositions while working
+   through Module 5A; read `LUMINAL_METAL.md` when a Metal question
+   outgrows comtam's own backend.
+4. Read dynamic autograd only after attempting Module 6.
+5. Read state/snapshot code only after writing Module 12's format contract.
+6. Read bindings and Python package structure only after defining Module 14's
    ownership model.
-6. Read backend registries, allocator machinery, and broad dtype dispatch only
+7. Read backend registries, allocator machinery, and broad dtype dispatch only
    when a measured comtam requirement makes the comparison relevant.
 
 Borrow the reason for an abstraction, not the amount of code surrounding it.
@@ -118,6 +129,10 @@ expand             : introduced/expanded size-one axes receive stride 0
 reshape            : change shape/strides only when layout remains representable
 contiguous         : allocate and gather logical values (Module 10)
 ```
+
+Autograd inverts a user-authored `shrink` by materializing zero-padding through
+Module 6's internal `zero_pad` path. That backward-support kernel is not a
+public movement operation and does not change the forward view rule above.
 
 ## Appendix E: Gate Evidence Template
 

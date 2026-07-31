@@ -149,7 +149,9 @@ contract; an unconditional failing placeholder would make the module gate
 impossible to pass.
 
 **Why this assignment:** A written correctness map is the difference between "I
-think it works" and a gate you can defend. Module 6 will start from this map.
+think it works" and a gate you can defend. Module 5 extends this map, mandatory
+Module 5A classifies primitives versus compositions, and Module 6 starts
+autograd only after both updates are verified.
 
 ## Module 4 Checklist
 

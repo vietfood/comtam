@@ -357,9 +357,10 @@ These are intentionally absent:
 - serialization
 - async command scheduling
 - lazy graphs or fusion
-- reductions (sum/mean/max/...) - `reduction.metal` at the repo root is
-  scratch/WIP, untracked, unbuilt, and not wired into `comtam/kernels/` or any
-  CMake target; treat it as a draft, not part of the current architecture
+- reductions (sum/mean/max/...) - `comtam/kernels/reduction.metal`, `Op::SUM`,
+  and `submit_reduce` are tracked scaffolding, but the kernel body is empty and
+  the path is not a working operation; treat it as a draft, not completed
+  architecture
 - autograd
 - `nn` modules and optimizers
 - profiling counters
@@ -369,12 +370,15 @@ test earns the complexity.
 
 ## Near-Term Pressure Points
 
-The next likely rewrites, following Module 5's remaining scope:
+The current pressure points are ordered by their course gates: finish Module 5,
+then complete mandatory Module 5A, then prepare Module 6.
 
 1. Finish reductions (sum first): decide the kernel contract (threadgroup tree vs. simple strided reduce), and how `command_desc`/`view_desc` need to grow to describe a reduced-away axis.
 2. Decide whether `command_desc` should grow a variant/tag for reduction and future ops, or whether reductions deserve their own narrow descriptor the way matmul got its own `submit_matmul` instead of overloading `bop`.
-3. Revisit the rank-4 cap in `view_desc`/`ViewInfo` if any planned op needs higher-rank tensors.
-4. Decide whether binary ops and matmul should stay as static `tensor` methods or become free functions once the public API keeps growing.
+3. At the Module 5 gate, enforce the current rank-4 descriptor limit before conversion and complete independent public-oracle coverage for broadcast, reduction, mean, and matmul.
+4. In Module 5A, add strided unary `neg`/`recip`, centralize preflight validation, compose `tensor::sub`/`tensor::div`/`tensor::mean`, and delete the retired `sub`/`div` dispatch entries, shaders, and any still-unwired future placeholder such as `Op::MAX`. Keep semantic operation counts separate from physical dtype/layout entry points.
+5. Before Module 6 records graphs, split user-authored movement operations from raw internal view aliases used for kernel broadcasting so gradients are reduced exactly once.
+6. Decide whether binary ops and matmul should stay as static `tensor` methods or become free functions once the public API keeps growing.
 
 ## Evolution Rule
 

@@ -16,3 +16,6 @@
 [submodule "refs/mlx"]
 	path = refs/mlx
 	url = https://github.com/ml-explore/mlx.git
+[submodule "refs/luminal"]
+	path = refs/luminal
+	url = https://github.com/luminal-ai/luminal.git

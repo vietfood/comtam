@@ -455,7 +455,10 @@ What is good:
 | `reshape` | `reshape` back |
 | `permute` | inverse `permute` |
 | `expand` | `sum` over expanded (stride-0) dimensions |
-| `slice` / `shrink` | `pad`|
+| `slice` / `shrink` | materializing zero-padding |
+
+Module 6 now names the narrow rectangular inverse `zero_pad`. It is an internal
+backward-support kernel rather than a public general padding or scatter API.
 
 Because each time the element `a[i]` is used for computation, it will have one gradient associated, so after that, we must accumulate total gradients it has.
 

@@ -152,13 +152,13 @@ Prior grading recorded 27/27 tests passing for broadcasted binary ops and
 contiguous matmul. That historical result is useful regression evidence, but it
 is not current-worktree verification and it does not satisfy the Module 5 gate.
 
-Two course-contract issues also need an explicit decision before this module is
-published as course material. First, command and Metal view metadata silently
-cap rank at four, while the Module 5 supported scope states no rank limit;
-either validate and document rank `<= 4` or remove the fixed-rank truncation.
-Second, the Module 4 correctness map still labels broadcasting and matmul as
-unsupported, so Exit Criterion 4 is not met even for the implemented cases.
+The course contract now explicitly caps GPU-facing operations at rank four;
+the implementation still needs rejection before fixed-rank descriptor
+conversion and rank-5 negative tests. The Module 4 correctness map also still
+labels broadcasting and matmul as unsupported, so the updated Module 5 exit
+gate is not met even for the implemented cases.
 
-Do not start Module 6 yet. Finish the missing broadcast edge cases and matmul
-validation/layout cases, implement full and axis reductions plus `mean`, update
-the Module 4 correctness map, then rerun the build and complete CTest suite.
+Do not start Module 5A or Module 6 yet. Finish the missing broadcast edge cases
+and matmul validation/layout cases, implement full and axis reductions plus
+full/axis `mean`, update the Module 4 correctness map, then rerun the build and
+complete CTest suite.

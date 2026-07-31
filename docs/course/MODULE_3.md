@@ -19,6 +19,10 @@ tests for mismatched shapes and non-contiguous inputs. This contract records the
 original Module 3 gate; it does not make a previously passed implementation add
 later dispatch features.
 
+At this historical stage, all four public binary operations are independently
+dispatched. Mandatory Module 5A later retires the physical `sub` and `div`
+dispatch paths while preserving these public APIs and their verified semantics.
+
 ## Why This Module Exists
 
 This is where comtam stops being a memory manager and becomes a tensor

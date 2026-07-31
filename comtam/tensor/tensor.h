@@ -69,7 +69,7 @@ class tensor {
            DType dtype = DType::Float32)
         : dtype_(dtype), view_(shape), storage_(nullptr) {
         COMTAM_DISPATCH_DTYPE(dtype_, [&] {
-            // we must ensure the storage byte match the Tensor
+            // we must ensure the storage byte match the view
             COMTAM_CHECK_AND_THROW(
                 sizeof(scalar_t) * static_cast<size_int>(view_.numel()) == storage->size(),
                 std::runtime_error, "Storage size doesn't match dtype and shape");

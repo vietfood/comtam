@@ -14,6 +14,15 @@ comtam stays Metal-only, float32-first, single-device, and eager. A tensor op
 runs now; the runtime does not build a lazy forward graph, schedule fusion, or
 hide device ownership behind a global manager.
 
+The differentiable semantic surface stays small and explicit. Module 5 proves
+shape-changing forward behavior; mandatory Module 5A then consolidates the
+baseline primitives as `add`, `mul`, `neg`, `recip`, `sum`, and `matmul`, with
+movement operations recorded separately. `sub`, `div`, and `mean` are public
+tensor-layer compositions and own no semantic node. Physical Metal entry-point
+variants and internal backward-support kernels are implementation details, not
+additional public operations. Later modules may earn new operations such as
+`relu` or a dedicated loss path with their own contracts and tests.
+
 The architectural path is:
 
 ```text
@@ -25,6 +34,7 @@ Metal context
   -> eager operator dispatch
   -> forward correctness
   -> broadcasting, reductions, matmul
+  -> primitive-surface consolidation
   -> reverse-mode autograd
   -> nn modules and SGD
   -> sustained training
@@ -120,6 +130,7 @@ Follow this order even if a later module looks more interesting.
 3. [`MODULE_3.md`](MODULE_3.md) - eager operator dispatch to Metal
 4. [`MODULE_4.md`](MODULE_4.md) - forward correctness against an external oracle
 5. [`MODULE_5.md`](MODULE_5.md) - broadcasting, reductions, and matmul
+   - **Required 5A gate:** [`MODULE_5A.md`](MODULE_5A.md) - primitive surface, composition, validation, and numerics
 6. [`MODULE_6.md`](MODULE_6.md) - dynamic reverse-mode autograd and graph lifetime
 7. [`MODULE_7.md`](MODULE_7.md) - stable parameters, modules, and SGD
 8. [`MODULE_8.md`](MODULE_8.md) - sustained end-to-end MNIST training
@@ -135,6 +146,8 @@ Why this order:
 - Forward oracles precede gradient rules so autograd starts from trusted math.
 - Broadcast, reduction, and matmul supply the shape-changing primitives needed
   by backward and layers.
+- Module 5A separates forward shape completion from the operator-surface
+  refactor, then gives autograd one tested semantic graph to differentiate.
 - Autograd defines identity, recording, accumulation, and graph lifetime before
   an optimizer mutates parameters.
 - Modules and SGD prove those semantics compose into stable trainable state.
@@ -187,6 +200,7 @@ outside the required track.
 | [`MODULE_3.md`](MODULE_3.md) | Eager dispatch | Does one validated op launch the correct Metal kernel? |
 | [`MODULE_4.md`](MODULE_4.md) | Forward correctness | Do values and shapes match an independent oracle? |
 | [`MODULE_5.md`](MODULE_5.md) | Broadcast/reduce/matmul | Do shape-changing ops work on required layouts and edges? |
+| [`MODULE_5A.md`](MODULE_5A.md) | Primitive consolidation | Do public compositions, semantic nodes, physical kernels, validation, and numerics agree? |
 | [`MODULE_6.md`](MODULE_6.md) | Autograd | Do graph identity, lifetime, and local gradients compose? |
 | [`MODULE_7.md`](MODULE_7.md) | nn and SGD | Can stable leaf parameters learn without recording updates? |
 | [`MODULE_8.md`](MODULE_8.md) | Training | Does a real sustained workload converge without leaked state? |
@@ -210,7 +224,8 @@ outside the required track.
 | [`MODULE_3.md`](MODULE_3.md) | Passed | build; CTest | Verified 2026-07-01; grading in [`../solution/MODULE_3.md`](../solution/MODULE_3.md). |
 | [`MODULE_4.md`](MODULE_4.md) | Passed | build; CTest | Verified 2026-07-01; grading in [`../solution/MODULE_4.md`](../solution/MODULE_4.md). |
 | [`MODULE_5.md`](MODULE_5.md) | In progress | broadcast/matmul tests; reduction WIP | Gate remains open; grading in [`../solution/MODULE_5.md`](../solution/MODULE_5.md). |
-| Modules 6-18 | Not started | - | Start only after the preceding module or capstone gate passes. |
+| [`MODULE_5A.md`](MODULE_5A.md) | Blocked | - | Required after Module 5; planning/evidence template in [`../solution/MODULE_5A.md`](../solution/MODULE_5A.md). |
+| Modules 6-18 | Not started | - | Start only after Module 5A and every subsequent preceding gate pass. |
 
 Keep this table compact. Assignment-level answers, commands, grading, missing
 tests, and pass/fail reasoning belong in the matching `docs/solution/MODULE_N.md`.
