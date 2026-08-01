@@ -83,14 +83,27 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
 /*
  * Broadcast must still work when an operand is a non-contiguous view. The binary
  * kernel indexes through physical_offset, so a transposed left operand plus a
- * broadcastable bias is a direct public proof of that path.
+ * broadcastable bias is a direct public proof of that path. Cover all four
+ * public binary names: add/mul are primitives; sub/div are compositions.
  */
 TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inputs",
           "[forward][ops][broadcast][mlx][metal]") {
     core::context context;
     auto& device = context.device();
 
-    // Logical: (4, 3) + (3,) -> (4, 3), with the (4, 3) operand coming from a
+    struct OpCase {
+        mlx_test::BinaryOp mlx_op;
+        tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
+    };
+
+    const OpCase op_cases[] = {
+        {mlx_add, tensor::add},
+        {mlx_subtract, tensor::sub},
+        {mlx_multiply, tensor::mul},
+        {mlx_divide, tensor::div},
+    };
+
+    // Logical: (4, 3) op (3,) -> (4, 3), with the (4, 3) operand coming from a
     // transpose of a contiguous (3, 4) base.
     const view_vector base_shape{3, 4};
     const view_vector logical_shape{4, 3};
@@ -110,10 +123,14 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inp
     const auto a_equiv = mlx_test::transpose_float32(base_data, base_shape, {1, 0});
     const auto expected_shape = view::broadcast_shape(view(logical_shape), view(bias_shape));
 
-    require_op_matches_oracle(
-        context, a.dtype(), expected_shape, [&]() { return tensor::add(a, b, context); },
-        [&]() {
-            return mlx_test::binary_float32(a_equiv, logical_shape, bias_data, bias_shape, mlx_add);
-        },
-        ValueMode::Approximate);
+    for (const auto& op : op_cases) {
+        CAPTURE(op.mlx_op);
+        require_op_matches_oracle(
+            context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
+            [&]() {
+                return mlx_test::binary_float32(a_equiv, logical_shape, bias_data, bias_shape,
+                                                op.mlx_op);
+            },
+            ValueMode::Approximate);
+    }
 }

@@ -72,6 +72,68 @@ TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") 
     }
 }
 
+/*
+ * Unary kernels read through physical_offset, so public neg/recip must work on
+ * a transposed view and on a shrink with a nonzero storage offset. Contiguous
+ * MLX cases alone do not exercise that path.
+ */
+TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
+          "[forward][ops][unary][mlx][metal]") {
+    core::context context;
+    auto& device = context.device();
+
+    const UnaryOpCase cases[] = {
+        {mlx_negative, tensor::neg},
+        {mlx_reciprocal, tensor::recip},
+    };
+
+    SECTION("transpose") {
+        // Logical (4, 3) from a contiguous (3, 4) base: strides become (1, 4).
+        const view_vector base_shape{3, 4};
+        const view_vector logical_shape{4, 3};
+        auto base_data = utils::generate_random_array<float>(12, 1.0F, 2.0F);
+
+        tensor a_base(base_data.data(), base_shape, device);
+        tensor a = a_base.transpose(0, 1);
+        REQUIRE(a.shape() == logical_shape);
+        REQUIRE(a.strides() == view_vector{1, 4});
+
+        const auto a_equiv = mlx_test::transpose_float32(base_data, base_shape, {1, 0});
+
+        for (const auto& op : cases) {
+            CAPTURE(op.mlx_op);
+            require_op_matches_oracle(
+                context, a.dtype(), logical_shape, [&]() { return op.comtam_op(a, context); },
+                [&]() { return mlx_test::unary_float32(a_equiv, logical_shape, op.mlx_op); },
+                ValueMode::Approximate);
+        }
+    }
+
+    SECTION("nonzero-offset shrink") {
+        // Inner 2x2 of a contiguous 3x3 starts at storage offset 4.
+        const view_vector base_shape{3, 3};
+        const view_vector logical_shape{2, 2};
+        auto base_data = utils::generate_random_array<float>(9, 1.0F, 2.0F);
+
+        tensor a_base(base_data.data(), base_shape, device);
+        tensor a = a_base.shrink({{1, 3}, {1, 3}});
+        REQUIRE(a.shape() == logical_shape);
+        REQUIRE(a.offset() == 4);
+        REQUIRE(a.strides() == view_vector{3, 1});
+
+        const auto a_equiv =
+            mlx_test::slice_float32(base_data, base_shape, {1, 1}, {3, 3}, {1, 1});
+
+        for (const auto& op : cases) {
+            CAPTURE(op.mlx_op);
+            require_op_matches_oracle(
+                context, a.dtype(), logical_shape, [&]() { return op.comtam_op(a, context); },
+                [&]() { return mlx_test::unary_float32(a_equiv, logical_shape, op.mlx_op); },
+                ValueMode::Approximate);
+        }
+    }
+}
+
 TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][ops][mlx][metal]") {
     core::context context;
     auto& device = context.device();

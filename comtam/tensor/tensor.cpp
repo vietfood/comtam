@@ -31,8 +31,10 @@ tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context
                      core::dtype2kernel(a.dtype_), utils::format_view(a.view_),
                      utils::format_view(b.view_));
 
-    tensor a_expand = a.expand(final_shape);
-    tensor b_expand = b.expand(final_shape);
+    // expand tensor a and b
+    // we don't use tensor::expand because it will create a new node in the autograd graph
+    tensor a_expand = tensor(a.storage_, a.view_.expand(final_shape), a.dtype_);
+    tensor b_expand = tensor(b.storage_, b.view_.expand(final_shape), b.dtype_);
 
     COMTAM_LOG_DEBUG("binop broadcast: shape={}\na_expand={}\nb_expand={}\n",
                      utils::format_view_vector(final_shape), utils::format_view(a_expand.view_),
@@ -41,11 +43,11 @@ tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context
     tensor out(final_shape, device, a.dtype_);
 
     core::command_desc cmd = {.kernel = {.op = op, .dtype = a.dtype_},
-                                     .a = {.storage = a_expand.storage_.get(),
-                                           .view = core::view_desc::from_view(a_expand.view_)},
-                                     .b = {.storage = b_expand.storage_.get(),
-                                           .view = core::view_desc::from_view(b_expand.view_)},
-                                     .out_buffer = out.storage_.get()};
+                              .a = {.storage = a_expand.storage_.get(),
+                                    .view = core::view_desc::from_view(a_expand.view_)},
+                              .b = {.storage = b_expand.storage_.get(),
+                                    .view = core::view_desc::from_view(b_expand.view_)},
+                              .out_buffer = out.storage_.get()};
 
     device.submit_bop(cmd, kernels);
 

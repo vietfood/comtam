@@ -123,8 +123,10 @@ TEST_CASE("Tensor ops reject rank-5 inputs", "[tensor][ops][api][metal]") {
     tensor ok({2, 3}, device);
 
     REQUIRE_THROWS_AS(tensor::neg(rank5, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::recip(rank5, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::add(rank5, ok, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::sub(ok, rank5, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(ok, rank5, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::mean(rank5, context), std::runtime_error);
 }
 
@@ -144,6 +146,7 @@ TEST_CASE("Tensor ops reject zero-extent inputs before dispatch", "[tensor][ops]
     REQUIRE(empty.numel() == 0);
 
     REQUIRE_THROWS_AS(tensor::neg(empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::recip(empty, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::add(empty, ok, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::sub(ok, empty, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::mul(empty, ok, context), std::runtime_error);

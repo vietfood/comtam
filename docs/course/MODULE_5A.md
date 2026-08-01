@@ -34,6 +34,8 @@ independent forward-oracle coverage.
 - an explicit distinction between semantic ops and physical Metal entry points
 - documented floating-point behavior for negation, reciprocal, and division
 - a clean removal of dispatchable `sub` and `div` kernels and `Op` entries
+- an explicit forward-only policy for implemented primitives whose autograd
+  semantics are intentionally deferred
 - a tape-boundary decision that Module 6 can implement without duplicate
   broadcast nodes
 
@@ -57,9 +59,10 @@ four related but different surfaces:
 
 | Surface | Module 5A contents | Contract |
 | --- | --- | --- |
-| Public tensor API | `add`, `sub`, `mul`, `div`, `neg`, `recip`, `sum`, `mean`, `matmul`, movement ops | What callers can request |
+| Public tensor API | `add`, `sub`, `mul`, `div`, `neg`, `recip`, `sum`, `mean`, `max`, `min`, `matmul`, movement ops | What callers can request |
 | Differentiable semantic primitives | `add`, `mul`, `neg`, `recip`, `sum`, `matmul`, movement ops | Nodes that Module 6 records and gives local rules |
-| Composed public ops | `sub`, `div`, `mean` | Ordinary tensor-layer code; no dedicated node or rule |
+| Forward-only semantic primitives | `max` | Independently dispatched and tested; Module 6 must reject gradient recording until a tie policy and backward rule are added |
+| Composed public ops | `sub`, `div`, `mean`, `min` | Ordinary tensor-layer code; no dedicated node or rule; `min` inherits the forward-only autograd policy from `max` |
 | Physical Metal entry points | dtype/layout variants of the dispatched primitives | Backend implementation detail, not the semantic count |
 
 At the Module 5A gate, the independently dispatched arithmetic families are:
@@ -68,11 +71,13 @@ At the Module 5A gate, the independently dispatched arithmetic families are:
 binary:     add, mul
 unary:      neg, recip
 reduction:  sum_reduce
+forward-only reduction: max_reduce
 matrix:     matmul
 ```
 
-This is six semantic arithmetic primitives, but not necessarily six Metal
-function names. A contiguous and a strided matmul entry point are two physical
+This is six initially differentiable arithmetic primitives plus one
+forward-only semantic primitive, but not necessarily seven Metal function
+names. A contiguous and a strided matmul entry point are two physical
 kernels implementing one semantic `matmul` operation. Conversely, Module 6 will
 add an internal backward-support kernel for zero-padding without making
 `zero_pad` a public differentiable operation.
@@ -88,14 +93,18 @@ The public compositions are:
 ```text
 sub(a, b)        = add(a, neg(b))
 div(a, b)        = mul(a, recip(b))
-mean(a)          = mul(sum(a), scalar(1.0f / a.numel()))
-mean(a, axis, k) = mul(sum(a, axis, k), scalar(1.0f / a.shape[axis]))
+mean(a)          = mul(sum(a), scalar(1.0F / a.numel()))
+mean(a, axis, k) = mul(sum(a, axis, k),
+                       scalar(1.0F / a.shape[axis]))
+min(a, ...)      = neg(max(neg(a), ...))
 ```
 
 `sub`, `div`, and `mean` keep their public names because they express useful
 intent. They do not keep dedicated semantic nodes merely because they have
 public names. When recording is enabled in Module 6, callers get the graph
-formed by the primitive calls above.
+formed by the primitive calls above. The mean scale is a positive finite rank-0
+constant in the supported scope and does not require gradients, so it must not
+become a tape node.
 
 ### Why `neg` Is A Primitive
 
@@ -208,9 +217,12 @@ real public movement operation and records its own node.
 
 **Tests:** Unit-test preflight helpers without Metal. Cover dtype mismatch,
 rank 5, incompatible shapes, scalar broadcasting, and zero extent. Public API
-tests must prove the same errors occur for primitive and composed binary ops.
-Do not add profiling counters solely to observe “no dispatch”; make the code
-structure enforce preflight-before-execution.
+tests must prove constructible invalid metadata reaches the same preflight for
+primitive and composed binary ops. While float32 is the only constructible
+dtype, helper-level dtype mismatch evidence is sufficient; do not manufacture
+an invalid tensor solely for that test. Do not add profiling counters solely to
+observe “no dispatch”; make the code structure enforce
+preflight-before-execution.
 
 ## Assignment 5A.4: Compose `sub`, `div`, And `mean` ⭐⭐⭐
 
@@ -231,16 +243,18 @@ The public `tensor::sub` and `tensor::div` functions remain. Do not leave dead
 dispatch cases “for later,” because their presence makes the semantic inventory
 false.
 
-Apply the same rule to unused speculative entries. If `Op::MAX` is still only
-an unwired draft when this module begins, remove it and its name mapping;
-Module 8 or a later operator project may reintroduce a maximum operation only
-with an implemented contract and tests. An enum is not a roadmap.
+Apply the same rule to unused speculative entries. `Op::MAX` is retained because
+it is fully dispatched and has public forward-oracle coverage; it is a real
+forward semantic primitive, not a placeholder. Its gradient is deliberately
+deferred: Module 6 must reject `max` and composed `min` on a recording tensor
+until a tie policy and gradient test are added.
 
 **Tests:** Run the full public oracle matrix for `sub`, `div`, full `mean`, and
 axis `mean`: scalar/tensor combinations, asymmetric ranks, non-contiguous
-inputs, both `keepdim` values, invalid metadata, and positive-sized boundary
-shapes. The tests observe public semantics, not whether the implementation is a
-kernel or a composition.
+binary inputs, both `keepdim` values, invalid metadata, and positive-sized
+boundary shapes. `mean` inherits the supported layouts of `sum`, which remains
+contiguous-only at this gate. The tests observe public semantics, not whether
+the implementation is a kernel or a composition.
 
 ## Assignment 5A.5: Define Numerical Semantics ⭐⭐⭐
 
@@ -292,10 +306,12 @@ Required evidence:
 
 - a clean build contains no `sub` or `div` Metal entry point
 - `Op` contains only independently dispatched semantic operations, with no
-  unwired `MAX` or other future placeholder
+  unwired future placeholder; retained `MAX` is documented as forward-only
 - all GPU-facing rank checks reject above four before descriptor conversion
 - public `sub`, `div`, and `mean` remain available and pass their oracle tests
-- the Module 4 correctness map identifies primitives versus compositions
+- the current Module 5A inventory and architecture documentation identify
+  primitives versus compositions; retroactive Module 4 grading text is not a
+  gate when it has been superseded
 - physical layout variants are listed without inflating the semantic op count
 - exact build and focused/full CTest commands are recorded
 
@@ -306,7 +322,7 @@ Required evidence:
 - [ ] 5A.3 Centralize metadata preflight and define the raw broadcast boundary.
 - [ ] 5A.4 Compose `sub`, `div`, full `mean`, and axis `mean`; retire their redundant dispatch paths.
 - [ ] 5A.5 Define and test finite and exceptional numerical semantics.
-- [ ] 5A.6 Clean-build and audit code, tests, documentation, and the correctness map.
+- [ ] 5A.6 Clean-build and audit code, tests, the current inventory, and architecture documentation.
 
 ## Exit Criteria
 
@@ -314,8 +330,8 @@ You are ready for Module 6 when:
 
 1. Module 5 and Module 5A both pass independently; consolidation does not hide
    a missing shape-changing forward test.
-2. `add`, `mul`, `neg`, `recip`, `sum`, and `matmul` have independent forward
-   oracle coverage on every supported layout relevant to them.
+2. `add`, `mul`, `neg`, `recip`, `sum`, `max`, and `matmul` have independent
+   forward-oracle coverage on every supported layout relevant to them.
 3. `sub`, `div`, full `mean`, and axis `mean` pass public oracle tests as
    compositions with no dedicated `Op` or semantic node.
 4. Invalid public calls finish preflight before any internal primitive executes.
@@ -323,5 +339,6 @@ You are ready for Module 6 when:
    tests, including NaN, infinity, signed zero, and zero denominator behavior.
 6. Internal binary broadcast aliases are explicitly non-recording; user-authored
    movement operations remain visible to the future tape.
-7. A clean build and full CTest run pass, and the solution note records exact
-   evidence and remaining unsupported behavior.
+7. A build and full CTest run pass, and the solution note records exact evidence
+   and remaining unsupported behavior. User-reported verification is acceptable
+   when clearly labeled rather than presented as independently rerun evidence.

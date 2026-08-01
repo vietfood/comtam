@@ -263,9 +263,9 @@ class tensor {
     static tensor mean(const tensor& a, view_int dim, bool keep_dim, core::context& ctx) {
         return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
             checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
-            auto scale = tensor(static_cast<scalar_t>(a.view_.shape[static_cast<size_int>(dim)]),
+            auto scale = tensor(static_cast<scalar_t>(1.0f / a.view_.shape[static_cast<size_int>(dim)]),
                                 ctx.device(), a.dtype());
-            return tensor::div(tensor::sum(a, dim, keep_dim, ctx), scale, ctx);
+            return tensor::mul(tensor::sum(a, dim, keep_dim, ctx), scale, ctx);
         });
     }
 
@@ -284,8 +284,8 @@ class tensor {
     static tensor mean(const tensor& a, core::context& ctx) {
         return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
             checks::check_reduce_full(a.view_, a.dtype_);
-            auto scale = tensor(static_cast<scalar_t>(a.numel()), ctx.device(), a.dtype());
-            return tensor::div(tensor::sum(a, ctx), scale, ctx);
+            auto scale = tensor(static_cast<scalar_t>(1.0f / a.numel()), ctx.device(), a.dtype());
+            return tensor::mul(tensor::sum(a, ctx), scale, ctx);
         });
     }
 
