@@ -1,31 +1,41 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #include "comtam/tensor/tensor.h"
 
-#include <stdexcept>
+#include <bit>
 
 #include "comtam/core/command.h"
 #include "comtam/core/context.h"
 #include "comtam/macros/log.h"
+#include "comtam/tensor/dtype.h"
 #include "comtam/tensor/op.h"
 #include "comtam/utils/debug.h"
 
 using namespace comtam;
+
+view_vector tensor::broadcast_shape(const view& lhs, const view& rhs) {
+    return view::broadcast_shape(lhs, rhs);
+}
 
 // ----- Binary operation -----
 tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context& ctx) {
     auto& device = ctx.device();
     auto& kernels = ctx.kernels();
 
-    COMTAM_CHECK_AND_THROW(a.dtype_ == b.dtype_, std::runtime_error,
-                           "Two operands must have the same dtype");
-
-    COMTAM_CHECK_AND_THROW(a.view_.is_contiguous() && b.view_.is_contiguous(), std::runtime_error,
-                           "Cannot do operation on non-contiguous inputs");
+    auto final_shape = checks::check_binary(a.view_, a.dtype_, b.view_, b.dtype_);
 
     COMTAM_LOG_DEBUG("binop {}_{}:\na={}\nb={}\n", core::op2kernel(op),
                      core::dtype2kernel(a.dtype_), utils::format_view(a.view_),
                      utils::format_view(b.view_));
-
-    auto final_shape = view::broadcast_shape(a.view_, b.view_);
 
     tensor a_expand = a.expand(final_shape);
     tensor b_expand = b.expand(final_shape);
@@ -36,12 +46,12 @@ tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context
 
     tensor out(final_shape, device, a.dtype_);
 
-    core::command_desc cmd = {.kernel = {.op = op, .dtype = a.dtype_},
-                              .a = {.storage = a_expand.storage_.get(),
-                                    .view = core::view_desc::from_view(a_expand.view_)},
-                              .b = {.storage = b_expand.storage_.get(),
-                                    .view = core::view_desc::from_view(b_expand.view_)},
-                              .out_buffer = out.storage_.get()};
+    core::tensor_command_desc cmd = {.kernel = {.op = op, .dtype = a.dtype_},
+                                     .a = {.storage = a_expand.storage_.get(),
+                                           .view = core::view_desc::from_view(a_expand.view_)},
+                                     .b = {.storage = b_expand.storage_.get(),
+                                           .view = core::view_desc::from_view(b_expand.view_)},
+                                     .out_buffer = out.storage_.get()};
 
     COMTAM_LOG_DEBUG("binop ViewInfo:\na: {}\nb: {}\nout_bytes={} (output written linearly)\n",
                      utils::format_view_info(cmd.a.view), utils::format_view_info(cmd.b.view),
@@ -52,20 +62,60 @@ tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context
     return out;
 }
 
-tensor tensor::add(const tensor& a, const tensor& b, core::context& ctx) {
-    return tensor::bop(a, b, Op::ADD, ctx);
+tensor tensor::bop_scalar(const tensor& a, uint32_t raw, const Op& op, core::context& ctx) {
+    auto& device = ctx.device();
+    auto& kernels = ctx.kernels();
+
+    checks::check_binary_scalar(a.view_, a.dtype_);
+
+    return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
+        auto scalar = std::bit_cast<scalar_t>(raw);
+
+        COMTAM_LOG_DEBUG("binop_scalar {}_{}:\na={}\nb={}\n", core::op2kernel(op),
+                         core::dtype2kernel(a.dtype_), utils::format_view(a.view_), scalar);
+
+        tensor out(a.view_.shape, device, a.dtype_);
+
+        core::scalar_command_desc cmd = {
+            .kernel = {.op = op, .dtype = a.dtype_},
+            .tensor = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
+            .scalar = raw,
+            .out_buffer = out.storage_.get()};
+
+        COMTAM_LOG_DEBUG("binop_scalar ViewInfo:\na: {}\nout_bytes={} (output written linearly)\n",
+                         utils::format_view_info(cmd.tensor.view), out.storage_->size());
+
+        device.submit_bop(cmd, kernels);
+
+        return out;
+    });
 }
 
-tensor tensor::sub(const tensor& a, const tensor& b, core::context& ctx) {
-    return tensor::bop(a, b, Op::SUB, ctx);
-}
+// ----- Unary operation ---
 
-tensor tensor::mul(const tensor& a, const tensor& b, core::context& ctx) {
-    return tensor::bop(a, b, Op::MUL, ctx);
-}
+tensor tensor::uop(const tensor& a, const Op& op, core::context& ctx) {
+    auto& device = ctx.device();
+    auto& kernels = ctx.kernels();
 
-tensor tensor::div(const tensor& a, const tensor& b, core::context& ctx) {
-    return tensor::bop(a, b, Op::DIV, ctx);
+    checks::check_unary(a.view_, a.dtype_);
+
+    COMTAM_LOG_DEBUG("uop {}_{}:\na={}\n", core::op2kernel(op), core::dtype2kernel(a.dtype_),
+                     utils::format_view(a.view_));
+
+    tensor out(a.view_.shape, device, a.dtype_);
+
+    core::tensor_command_desc cmd = {
+        .kernel = {.op = op, .dtype = a.dtype_},
+        .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
+        .b = {},  // default
+        .out_buffer = out.storage_.get()};
+
+    COMTAM_LOG_DEBUG("binop ViewInfo:\na: {}\n\nout_bytes={} (output written linearly)\n",
+                     utils::format_view_info(cmd.a.view), out.storage_->size());
+
+    device.submit_uop(cmd, kernels);
+
+    return out;
 }
 
 // ----- Matmul -----
@@ -73,26 +123,20 @@ tensor tensor::matmul(const tensor& a, const tensor& b, core::context& ctx) {
     auto& device = ctx.device();
     auto& kernels = ctx.kernels();
 
-    COMTAM_CHECK_AND_THROW(a.dtype_ == b.dtype_, std::runtime_error,
-                           "Two operands must have the same dtype");
-
-    COMTAM_CHECK_AND_THROW(a.shape().size() == 2 && b.shape().size() == 2, std::runtime_error,
-                           "Right now, matmul only supports 2D array");
-
-    COMTAM_CHECK_AND_THROW(a.shape()[1] == b.shape()[0], std::runtime_error,
-                           "To do matmul, column of a must match with row of b");
+    auto out_shape = checks::check_matmul(a.view_, a.dtype_, b.view_, b.dtype_);
 
     COMTAM_LOG_DEBUG("matmul {}_{}:\na={}\nb={}\n", core::op2kernel(Op::MATMUL),
                      core::dtype2kernel(a.dtype_), utils::format_view(a.view_),
                      utils::format_view(b.view_));
 
-    tensor out({a.shape()[0], b.shape()[1]}, device, a.dtype_);
+    tensor out(out_shape, device, a.dtype_);
 
     // check contiguous
-    bool is_contiguous = a.view_.is_contiguous() && b.view_.is_contiguous();
+    bool is_contiguous = (a.view_.is_contiguous() && a.offset() == 0) &&
+                         (b.view_.is_contiguous() && b.offset() == 0);
     OpVariant variant = is_contiguous ? OpVariant::CONTIGUOUS : OpVariant::STRIDED;
 
-    core::command_desc cmd = {
+    core::tensor_command_desc cmd = {
         .kernel = {.op = Op::MATMUL, .dtype = a.dtype_, .variant = variant},
         .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
         .b = {.storage = b.storage_.get(), .view = core::view_desc::from_view(b.view_)},
@@ -107,25 +151,35 @@ tensor tensor::matmul(const tensor& a, const tensor& b, core::context& ctx) {
     return out;
 }
 
-// ----- View operation -----
-// These operations are free (change view only)
+// ---- Reduction operation -----
+tensor tensor::rop(const tensor& a, const Op& op, core::context& ctx, view_int dim, bool keep_dim,
+                   const OpVariant& variant) {
+    auto& device = ctx.device();
+    auto& kernels = ctx.kernels();
 
-tensor tensor::permute(const view_vector& new_axes) const {
-    return tensor(storage_, view_.permute(new_axes), dtype_);
-}
+    view_vector final_shape;
+    if (variant == OpVariant::AXIS) {
+        final_shape = checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
+    } else {
+        final_shape = checks::check_reduce_full(a.view_, a.dtype_);
+    }
 
-tensor tensor::transpose(view_int a, view_int b) const {
-    return tensor(storage_, view_.transpose(a, b), dtype_);
-}
+    COMTAM_LOG_DEBUG("reduce_op {}_{}:\na={}\n", core::op2kernel(op), core::dtype2kernel(a.dtype_),
+                     utils::format_view(a.view_));
 
-tensor tensor::shrink(const pair_view_vector& limits) const {
-    return tensor(storage_, view_.shrink(limits), dtype_);
-}
+    tensor out(final_shape, device, a.dtype_);
 
-tensor tensor::expand(const view_vector& new_shape) const {
-    return tensor(storage_, view_.expand(new_shape), dtype_);
-}
+    core::tensor_command_desc cmd = {
+        .kernel = {.op = op, .dtype = a.dtype_, .variant = variant},
+        .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
+        .b = {},
+        .out_buffer = out.storage_.get(),
+        .extra = {.axis = variant == OpVariant::AXIS ? static_cast<int64_t>(dim) : -1}};
 
-tensor tensor::reshape(const view_vector& new_shape) const {
-    return tensor(storage_, view_.reshape(new_shape), dtype_);
+    COMTAM_LOG_DEBUG("reduce_op ViewInfo:\na: {}\nout_bytes={} (output written linearly)\n",
+                     utils::format_view_info(cmd.a.view), out.storage_->size());
+
+    device.submit_reduce(cmd, kernels);
+
+    return out;
 }

@@ -1,13 +1,13 @@
 /*
-** +--( ~_~ )-------------------------------------------------------------+
-** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
-** | Licensed under the Apache License, Version 2.0                        |
-** | AI assist : Composer 2.5 (Cursor) and GPT 5.5 (Codex)                 |
-** |                                                                       |
-** | Website : https://lenguyen.vercel.app                                 |
-** | GitHub  : https://github.com/vietfood/comtam                          |
-** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
-** +--( ^_^ )-------------------------------------------------------------+
+** +--( ~_~ )-----------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                          |
+** | Licensed under the Apache License, Version 2.0                           |
+** | AI assist : Composer 2.5 (Cursor), Grok 4.5 (Cursor) and GPT 5.5 (Codex) |
+** |                                                                          |
+** | Website : https://lenguyen.vercel.app                                    |
+** | GitHub  : https://github.com/vietfood/comtam                             |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                    |
+** +--( ^_^ )-----------------------------------------------------------------+
 */
 
 #pragma once
@@ -25,6 +25,7 @@
 namespace comtam::tests::mlx_oracle {
 
 using BinaryOp = int (*)(mlx_array*, mlx_array, mlx_array, mlx_stream);
+using UnaryOp = int (*)(mlx_array*, mlx_array, mlx_stream);
 
 inline void check(int code, const char* what) {
     if (code != 0) {
@@ -146,19 +147,18 @@ inline std::vector<float> to_vector_float32(const Array& array, const Stream& st
     return {data, data + size};
 }
 
-inline std::vector<float> binary_float32(const std::vector<float>& lhs,
-                                         const std::vector<float>& rhs, const view_vector& shape,
-                                         BinaryOp op) {
+inline std::vector<float> unary_float32(const std::vector<float>& lhs,
+                                        const view_vector& shape,
+                                        UnaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, shape);
-    auto b = Array::from_float32(rhs, shape);
     Array result;
 
-    check(op(result.out_ptr(), a.get(), b.get(), stream.get()), "binary op");
+    check(op(result.out_ptr(), a.get(), stream.get()), "unary op");
     return to_vector_float32(result, stream);
 }
 
-inline std::vector<float> binary_broadcast_float32(const std::vector<float>& lhs,
+inline std::vector<float> binary_float32(const std::vector<float>& lhs,
                                                    const view_vector& lhs_shape,
                                                    const std::vector<float>& rhs,
                                                    const view_vector& rhs_shape, BinaryOp op) {
@@ -233,6 +233,90 @@ inline std::vector<float> reshape_float32(const std::vector<float>& data, const 
     check(mlx_reshape(result.out_ptr(), input.get(), mlx_shape.data(), mlx_shape.size(),
                       stream.get()),
           "mlx_reshape");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> sum_float32(const std::vector<float>& data, const view_vector& shape,
+                                      bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_sum(result.out_ptr(), input.get(), keepdims, stream.get()), "mlx_sum");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> sum_axis_float32(const std::vector<float>& data, const view_vector& shape,
+                                           int axis, bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_sum_axis(result.out_ptr(), input.get(), axis, keepdims, stream.get()),
+          "mlx_sum_axis");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> mean_float32(const std::vector<float>& data, const view_vector& shape,
+                                       bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_mean(result.out_ptr(), input.get(), keepdims, stream.get()), "mlx_mean");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> mean_axis_float32(const std::vector<float>& data, const view_vector& shape,
+                                            int axis, bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_mean_axis(result.out_ptr(), input.get(), axis, keepdims, stream.get()),
+          "mlx_mean_axis");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> max_float32(const std::vector<float>& data, const view_vector& shape,
+                                      bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_max(result.out_ptr(), input.get(), keepdims, stream.get()), "mlx_max");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> max_axis_float32(const std::vector<float>& data, const view_vector& shape,
+                                           int axis, bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_max_axis(result.out_ptr(), input.get(), axis, keepdims, stream.get()),
+          "mlx_max_axis");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> min_float32(const std::vector<float>& data, const view_vector& shape,
+                                      bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_min(result.out_ptr(), input.get(), keepdims, stream.get()), "mlx_min");
+    return to_vector_float32(result, stream);
+}
+
+inline std::vector<float> min_axis_float32(const std::vector<float>& data, const view_vector& shape,
+                                           int axis, bool keepdims = false) {
+    Stream stream;
+    auto input = Array::from_float32(data, shape);
+    Array result;
+
+    check(mlx_min_axis(result.out_ptr(), input.get(), axis, keepdims, stream.get()),
+          "mlx_min_axis");
     return to_vector_float32(result, stream);
 }
 

@@ -28,12 +28,12 @@ COMTAM_INLINE std::string op2kernel(const Op& op) {
     switch (op) {
         case Op::ADD:
             return "add";
-        case Op::SUB:
-            return "sub";
         case Op::MUL:
             return "mul";
-        case Op::DIV:
-            return "div";
+        case Op::NEG:
+            return "neg";
+        case Op::RECIP:
+            return "recip";
         case Op::MATMUL:
             return "matmul";
         case Op::SUM:
@@ -116,9 +116,13 @@ struct view_desc {
 };
 
 /* each input will have a data buffer and view information */
-struct input_desc {
+struct tensor_input_desc {
     storage* storage;
     view_desc view;
+};
+
+struct extra_desc {
+    view_int axis = -1;
 };
 
 /*
@@ -126,12 +130,41 @@ struct input_desc {
  * - a kernel  (Op + DType)
  * - two input info (a, b)
  * - an output info (out)
- * Warning: we assume this is BinaryCommand
+ * - an extra info (axis, scalar)
  */
-struct command_desc {
+struct tensor_command_desc {
     kernel_desc kernel;
-    input_desc a;
-    input_desc b;
+    tensor_input_desc a;
+    tensor_input_desc b;
+    storage* out_buffer;
+    extra_desc extra;
+};
+
+/*
+ * A scalar command will have:
+ * - a kernel  (Op + DType)
+ * - a tensor input info (a)
+ * - a scalar value
+ * - an output info (out)
+ */
+struct scalar_command_desc {
+    kernel_desc kernel;
+    tensor_input_desc tensor;
+    uint32_t scalar;  // scalar value
     storage* out_buffer;
 };
+
+struct command_desc : std::variant<tensor_command_desc, scalar_command_desc> {
+    using base_type = std::variant<tensor_command_desc, scalar_command_desc>;
+    using base_type::base_type;
+
+    bool is_scalar() const { return std::holds_alternative<scalar_command_desc>(*this); }
+    bool is_tensor() const { return std::holds_alternative<tensor_command_desc>(*this); }
+
+    const tensor_command_desc& as_tensor() const { return std::get<tensor_command_desc>(*this); }
+    tensor_command_desc& as_tensor() { return std::get<tensor_command_desc>(*this); }
+    const scalar_command_desc& as_scalar() const { return std::get<scalar_command_desc>(*this); }
+    scalar_command_desc& as_scalar() { return std::get<scalar_command_desc>(*this); }
+};
+
 }  // namespace comtam::core

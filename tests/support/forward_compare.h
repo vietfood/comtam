@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
+#include <cmath>
 #include <cstddef>
 #include <numeric>
 #include <string>
@@ -187,6 +188,81 @@ void require_op_matches_oracle(core::context& context, const DType& dtype,
         require_forward_matches<scalar_t>(device, comtam_fn(), expected_shape, oracle_fn(), mode,
                                           epsilon);
     });
+}
+
+enum class FloatClass {
+    Finite,
+    PosZero,
+    NegZero,
+    PosInf,
+    NegInf,
+    NaN,
+};
+
+inline FloatClass classify_float32(float value) {
+    if (std::isnan(value)) {
+        return FloatClass::NaN;
+    }
+    if (std::isinf(value)) {
+        return value > 0 ? FloatClass::PosInf : FloatClass::NegInf;
+    }
+    if (value == 0.0F) {
+        return std::signbit(value) ? FloatClass::NegZero : FloatClass::PosZero;
+    }
+    return FloatClass::Finite;
+}
+
+inline const char* float_class_name(FloatClass klass) {
+    switch (klass) {
+        case FloatClass::Finite:
+            return "finite";
+        case FloatClass::PosZero:
+            return "+0";
+        case FloatClass::NegZero:
+            return "-0";
+        case FloatClass::PosInf:
+            return "+inf";
+        case FloatClass::NegInf:
+            return "-inf";
+        case FloatClass::NaN:
+            return "nan";
+    }
+    return "unknown";
+}
+
+inline void require_float_class(float actual, FloatClass expected) {
+    const auto actual_class = classify_float32(actual);
+    CAPTURE(actual);
+    CAPTURE(float_class_name(actual_class));
+    CAPTURE(float_class_name(expected));
+    REQUIRE(actual_class == expected);
+}
+
+inline void require_values_close_abs_rel(const std::vector<float>& expected,
+                                         const std::vector<float>& actual, double abs_eps,
+                                         double rel_eps, const view_vector& shape = {}) {
+    REQUIRE(actual.size() == expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+        const bool close =
+            Catch::Matchers::WithinAbs(static_cast<double>(expected[i]), abs_eps)
+                .match(static_cast<double>(actual[i])) ||
+            Catch::Matchers::WithinRel(static_cast<double>(expected[i]), rel_eps)
+                .match(static_cast<double>(actual[i]));
+        if (close) {
+            continue;
+        }
+
+        const std::string expected_preview = format_values_preview(expected, shape);
+        const std::string actual_preview = format_values_preview(actual, shape);
+        const std::string mismatch_window = format_mismatch_window(expected, actual, i);
+        CAPTURE(expected_preview);
+        CAPTURE(actual_preview);
+        CAPTURE(mismatch_window);
+        CAPTURE(i);
+        CAPTURE(expected[i]);
+        CAPTURE(actual[i]);
+        REQUIRE(close);
+    }
 }
 
 }  // namespace comtam::tests::forward_compare

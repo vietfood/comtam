@@ -115,21 +115,20 @@ TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][ap
     REQUIRE_THROWS_AS(tensor::div(a, b, context), std::runtime_error);
 }
 
-TEST_CASE("Tensor binary operations reject non-contiguous inputs", "[tensor][ops][api][metal]") {
+TEST_CASE("Tensor ops reject rank-5 and zero-extent inputs", "[tensor][ops][api][metal]") {
     core::context context;
     auto& device = context.device();
 
-    tensor base({2, 3}, device);
-    base.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
+    tensor rank5({1, 1, 1, 1, 1}, device);
+    tensor ok({2, 3}, device);
+    tensor mat_a({2, 3}, device);
+    tensor mat_b_bad_k({4, 5}, device);
 
-    auto non_contiguous = base.transpose(1, 0);
-    tensor contiguous({3, 2}, device);
-    contiguous.from_vector<float>({0.f, 3.f, 1.f, 4.f, 2.f, 5.f}, device);
-
-    REQUIRE_THROWS_AS(tensor::add(non_contiguous, contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::sub(contiguous, non_contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::mul(non_contiguous, contiguous, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::div(contiguous, non_contiguous, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::neg(rank5, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(rank5, ok, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sub(ok, rank5, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mean(rank5, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(mat_a, mat_b_bad_k, context), std::runtime_error);
 }
 
 TEST_CASE("Tensor from_vector rejects non-contiguous views", "[tensor][api][view][metal]") {

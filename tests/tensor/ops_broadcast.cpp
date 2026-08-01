@@ -72,7 +72,7 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
             require_op_matches_oracle(
                 context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
                 [&]() {
-                    return mlx_test::binary_broadcast_float32(lhs, broadcast_case.lhs_shape, rhs,
+                    return mlx_test::binary_float32(lhs, broadcast_case.lhs_shape, rhs,
                                                               broadcast_case.rhs_shape, op.mlx_op);
                 },
                 ValueMode::Approximate);

@@ -14,9 +14,19 @@
 #include <cstddef>
 
 #include "comtam/macros/log.h"
+#include "comtam/macros/macros.h"
 
 namespace comtam {
 enum class DType { Float32 };
+
+COMTAM_INLINE bool support_dtype(DType dtype) {
+    switch (dtype) {
+        case DType::Float32:
+            return true;
+        default:
+            return false;
+    }
+}
 
 // clang-format off
 #define COMTAM_DISPATCH_DTYPE(DTYPE, ...)                                                         \

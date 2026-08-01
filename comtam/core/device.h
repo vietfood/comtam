@@ -69,6 +69,7 @@ class metal_device {
 
     // methods for command execution
     void submit_bop(const command_desc& command, kernel_library& kernels);
+    void submit_uop(const command_desc& command, kernel_library& kernels);
     void submit_matmul(const command_desc& command, kernel_library& kernels);
     void submit_reduce(const command_desc& command, kernel_library& kernels);
 

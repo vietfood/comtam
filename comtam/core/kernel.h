@@ -27,7 +27,7 @@ class kernel_library {
    public:
     kernel_library(MTL::Device* device, std::filesystem::path kernel_dir);
 
-    MTL::ComputePipelineState* get(const kernel_desc& kernel);
+    MTL::ComputePipelineState* get(const kernel_desc& kernel, bool is_scalar);
 
    private:
     // kernel will cache its own Device

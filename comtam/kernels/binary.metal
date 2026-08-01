@@ -25,6 +25,21 @@ kernel void add(
     dst[id] = src0[src0_pid] + src1[src1_pid];
 }
 
+template<typename T>
+kernel void add_scalar(
+    device const T* src0,
+    device T* dst,
+    constant T& scalar,
+    constant ViewInfo& view_src0,
+    uint id [[thread_position_in_grid]]
+) {
+    if (id >= view_src0.N) {
+        return;
+    }
+    int64_t src0_pid = physical_offset(id, view_src0);
+    dst[id] = src0[src0_pid] + scalar;
+}
+
 template [[ host_name("add_fp32") ]]
 kernel void add(
     device const float*,
@@ -35,29 +50,11 @@ kernel void add(
     uint
 );
 
-/* --- Sub Kernel --- */
-template <typename T>
-kernel void sub(
-        device const T* src0,
-        device const T* src1,
-        device T* dst,
-        constant ViewInfo& view_src0,
-        constant ViewInfo& view_src1,
-        uint id [[thread_position_in_grid]]) {
-    if (id >= view_src0.N) {
-        return;
-    }
-    int64_t src0_pid = physical_offset(id, view_src0);
-    int64_t src1_pid = physical_offset(id, view_src1);
-    dst[id] = src0[src0_pid] - src1[src1_pid];
-}
-
-template [[ host_name("sub_fp32") ]]
-kernel void sub(
-    device const float*,
+template [[ host_name("add_fp32_scalar") ]]
+kernel void add_scalar(
     device const float*,
     device float*,
-    constant ViewInfo&,
+    constant float& scalar,
     constant ViewInfo&,
     uint
 );
@@ -79,6 +76,20 @@ kernel void mul(
     dst[id] = src0[src0_pid] * src1[src1_pid];
 }
 
+template <typename T>
+kernel void mul_scalar(
+    device const T* src0,
+    device T* dst,
+    constant T& scalar,
+    constant ViewInfo& view_src0,
+    uint id [[thread_position_in_grid]]) {
+    if (id >= view_src0.N) {
+        return;
+    }
+    int64_t src0_pid = physical_offset(id, view_src0);
+    dst[id] = src0[src0_pid] * scalar;
+}
+
 template [[ host_name("mul_fp32") ]]
 kernel void mul(
     device const float*,
@@ -89,33 +100,11 @@ kernel void mul(
     uint
 );
 
-/* -- Div Kernel --- */
-template <typename T>
-kernel void div(
-        device const T* src0,
-        device const T* src1,
-        device T* dst,
-        constant ViewInfo& view_src0,
-        constant ViewInfo& view_src1,
-        uint id [[thread_position_in_grid]]) {
-    if (id >= view_src0.N) {
-        return;
-    }
-    int64_t src0_pid = physical_offset(id, view_src0);
-    int64_t src1_pid = physical_offset(id, view_src1);
-    if (src1[src1_pid] == 0) {
-        dst[id] = INFINITY;
-    } else {
-        dst[id] = src0[src0_pid] / src1[src1_pid];
-    }
-}
-
-template [[ host_name("div_fp32") ]]
-kernel void div(
-    device const float*,
+template [[ host_name("mul_fp32_scalar") ]]
+kernel void mul_scalar(
     device const float*,
     device float*,
-    constant ViewInfo&,
+    constant float&,
     constant ViewInfo&,
     uint
 );

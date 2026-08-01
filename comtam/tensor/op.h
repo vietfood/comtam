@@ -15,9 +15,10 @@ namespace comtam {
 enum class Op {
     // Binary operations
     ADD,
-    SUB,
-    MUL,  // this is element-wise multiplication
-    DIV,
+    MUL,
+    // Unary operations
+    NEG,
+    RECIP,
     // Matmul
     MATMUL,
     // Reduce
