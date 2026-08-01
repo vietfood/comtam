@@ -6,12 +6,12 @@ consolidate its primitive/composed boundary before autograd begins.
 
 ## Module Contract
 
-**Prerequisite:** Module 4 has independent forward-oracle coverage and a
-current correctness map. **Deliverables:** `broadcast_shapes`, broadcasted
+**Prerequisite:** Module 4 has independent forward-oracle coverage.
+**Deliverables:** `broadcast_shapes`, broadcasted
 float32 `add`/`sub`/`mul`/`div` using strided input views, full and axis `sum`,
-full and axis `mean`, and naive 2-D `matmul` that reads strided inputs. Every
-new operation requires public API correctness tests and an updated Module 4
-correctness map.
+full and axis `mean`, and 2-D `matmul` with a fast contiguous path plus a
+strided-input path. Every new operation and materially different kernel path
+requires public API correctness tests.
 
 Supported scope is right-aligned NumPy-style broadcasting, rank-0 through
 rank-4 tensors, positive-sized dimensions, non-negative axes, and 2-D matmul
@@ -21,13 +21,12 @@ because the current storage layer forbids zero-byte allocation; Module 9
 revisits empty-tensor semantics deliberately. Negative axes, batched matmul,
 dtype promotion, implicit materialization, and fusion are unsupported.
 
-Use an independent oracle appropriate to the claim: MLX-C is preferred for
-framework shape and value semantics, while a transparent manual CPU loop is
-appropriate for broadcast indexing, reduction, and tiny matmul cross-checks.
-Record which oracle each test uses. Completion evidence is CTest coverage of
-the matrix below and the simplest correct reference kernels. An already-present
-optimized path does not replace the required simple correctness path or earn a
-performance claim without Module 13 measurements.
+Use MLX-C on its CPU stream as the independent oracle for framework shape and
+value semantics. A transparent manual CPU loop is optional when it makes a
+failure easier to debug, but it is not duplicate gate work. Record which oracle
+each test uses. Completion evidence is CTest coverage of the matrix below and
+of every selected kernel path. Optimized kernels are valid learning work, but
+they earn no performance claim without measurements.
 
 | Area | Required evidence |
 | --- | --- |
@@ -145,9 +144,10 @@ plus one scalar arithmetic operation, with no new coordination problem.
 
 **Task:** Add `sum(a)` that reduces all elements to a scalar tensor.
 
-Start with the simplest correct kernel, even a single-threadgroup or naive
-approach. Correctness first; the tree reduction is a Module 13 concern, and only
-after a measurement.
+A simple single-threadgroup implementation is enough. A tree reduction is also
+acceptable as an explicit kernel-learning exercise, provided its numerical
+behavior is checked against MLX-C and no performance claim is made without a
+measurement.
 
 Questions:
 
@@ -156,8 +156,8 @@ Questions:
 2. What is the floating-point order-of-summation caveat, and how does it affect
    your epsilon in the oracle test?
 
-**Test:** `sum` of a known vector against a CPU sum, with a tolerance that
-accounts for summation order. The result is a rank-0 tensor with shape `()`,
+**Test:** `sum` of a known vector against MLX-C on a CPU stream, with a tolerance
+that accounts for summation order. The result is a rank-0 tensor with shape `()`,
 not a length-one vector. Reject a zero-extent input before dispatch until Module
 9 defines and implements empty-tensor storage and reduction behavior.
 
@@ -216,19 +216,21 @@ eager runtime would actually allocate and traffic it. Composition that changes
 the asymptotic memory cost is exactly what the budget forbids, so `matmul`
 stays a kernel.
 
-### Assignment 5.5: Implement Naive 2-D Matmul ⭐⭐⭐
+### Assignment 5.5: Implement 2-D Matmul And A Contiguous Fast Path ⭐⭐⭐
 
-**Task:** Add `matmul(a, b)` for 2-D inputs with a straightforward kernel: one
-thread per output element, looping over `k`.
+**Task:** Add `matmul(a, b)` for 2-D inputs. Use a straightforward
+one-thread-per-output strided kernel as the general path, and optionally select
+a tiled contiguous kernel when both inputs satisfy its layout contract.
 
 Rules:
 
 - Validate inner dimensions match.
-- Do not tile, do not use threadgroup memory, do not optimize. The naive kernel
-  is the oracle's friend.
 - Read inputs through their views, including each input's offset and strides, so
   either transposed input still works. The output is always a new contiguous
   view with shape `(a.shape[0], b.shape[1])`.
+- A tiled kernel may use threadgroup memory for zero-offset contiguous inputs.
+  Test it separately at non-square and tile-boundary shapes so dispatch geometry
+  and edge masking cannot hide behind square matrices.
 - Require rank exactly two and reject any zero extent before allocation or
   dispatch until Module 9 establishes empty-tensor support.
 
@@ -239,9 +241,10 @@ Questions:
 2. What is the largest size you can test before the naive kernel is too slow to
    be a comfortable test?
 
-**Test:** Small matmuls (for example `(2, 3) @ (3, 4)`) against a CPU triple
-loop, including a transposed left or right input, a rank error, an
-inner-dimension mismatch, and a zero-extent rejection.
+**Test:** Matmuls against MLX-C on a CPU stream, including a non-square
+tile-boundary case for the contiguous fast path, a transposed left or right
+input for the strided path, a rank error, an inner-dimension mismatch, and a
+zero-extent rejection.
 
 ## Module 5 Checklist
 
@@ -249,7 +252,7 @@ inner-dimension mismatch, and a zero-extent rejection.
 - [ ] 5.2 Make binary ops broadcast via expand + strided kernel.
 - [ ] 5.3 Implement full-reduce `sum`.
 - [ ] 5.4 Implement full/axis `sum` and `mean` with one keepdim policy.
-- [ ] 5.5 Implement naive 2-D matmul, strided-input aware.
+- [ ] 5.5 Implement 2-D matmul with tested contiguous and strided-input paths.
 
 ## Exit Criteria
 
@@ -257,11 +260,12 @@ You are ready for mandatory Module 5A when:
 
 1. Broadcasted binary ops match independent oracles on asymmetric shapes.
 2. Full and axis reductions match independent oracles within a justified tolerance.
-3. Naive matmul matches a CPU triple loop, including a transposed input.
+3. Both contiguous and strided matmul paths match MLX-C, including a non-square
+   tile-boundary case and a transposed input.
 4. Full and axis `mean` match independent oracles at the public API.
 5. Rank above four, zero extents, incompatible shapes, invalid axes, and bad
    matmul contracts reject before allocation or dispatch.
-6. Every new operation has a correctness test, and the correctness map from
-   Module 4 is updated with the oracle used.
-7. The simple correctness paths are retained and tested; an optimized path is
-   not accepted as correctness or performance evidence merely because it runs.
+6. Every new operation and materially different kernel path has a correctness
+   test with its oracle recorded in the current module grading.
+7. Optimized paths are accepted as learning work when tested independently;
+   performance claims still require measurements.

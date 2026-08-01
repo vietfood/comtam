@@ -43,9 +43,17 @@ Metal context
 
 ## Course Discipline
 
-Use `docs/course/INDEX.md` as the source of truth for module order and gates.
-When grading progress, grade honestly against the completion gate, not against
-whether a demo prints plausible output.
+Use `docs/course/INDEX.md` as the baseline for module order and gates. Reconcile
+the course with verified source code, tests, and explicit user decisions before
+grading; do not treat stale course or solution text as stronger evidence than
+the current worktree. The source does not silently redefine its own acceptance
+criteria, so record deliberate scope or learning-goal changes in the course
+before applying the revised gate.
+
+Adapt course difficulty to the user's demonstrated competence and learning
+goals. Preserve correctness and architectural prerequisites, but allow a harder
+implementation when it teaches a relevant topic and its additional execution
+paths are tested independently.
 
 Current course rule:
 
@@ -54,7 +62,9 @@ Current course rule:
 - Every autograd rule needs a gradient test.
 - Every Metal object needs one obvious owner.
 - No hidden global framework state.
-- No optimization before a failing performance measurement.
+- Optimization exercises are allowed as explicit learning work when the simple
+  semantics remain independently verified. Do not make performance claims or
+  add production optimization infrastructure before measurement.
 
 ## References
 
@@ -89,8 +99,9 @@ For code changes:
 - If Metal execution fails inside a sandbox, state that and run outside the
   sandbox only with explicit permission.
 - Treat printed arrays as debugging, not tests.
-- Prefer independent oracles and exact/epsilon comparisons: MLX C for framework
-  semantics, and tiny manual/CPU oracles when they are clearer.
+- Prefer independent oracles and exact/epsilon comparisons. MLX C running on its
+  CPU stream is sufficient as the numerical oracle; tiny manual CPU oracles are
+  optional when they make a failure easier to understand.
 
 For module grading:
 

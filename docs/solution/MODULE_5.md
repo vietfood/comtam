@@ -4,161 +4,100 @@
 
 ### Agent Feedback / Grading
 
-Status: partially passed. The core right-aligned shape rule works for the tested
-positive and incompatible cases, but the required scalar case and zero-extent
-policy are not covered yet.
+Status: partially passed.
 
-What is good:
-
-- You started in the right layer: broadcasting shape inference should be pure
-  view/shape logic before it is wired into Tensor ops.
-- Positive tests now exist for `(3, 1)` with `(2, 1, 4) -> (2, 3, 4)`.
-- A positive test now covers the true rank-1 case `(3,)` with `(4, 3)`.
-- Incompatible-shape tests exist for `(2, 3)` with `(4, 3)`, and for a
-  mismatched middle dimension.
+The right-aligned broadcasting rule handles positive asymmetric ranks and incompatible dimensions correctly. Rank-0 tensors also pass through this rule successfully in the public scalar-operand tests.
 
 Remaining gate work:
 
-- There is no scalar/rank-0 broadcasting test such as `()` with `(2, 3)`.
-- There is no zero-extent shape-inference test documenting that shape math may
-  infer a zero extent even though Module 5 tensor operations must reject it.
-- The implementation uses `size_t a` and `size_t b` for dimensions that come
-  from `ViewInt`. Today all shapes should be non-negative, but the shape rule
-  should stay in the same signed domain as `View`.
-
-Suggested next step:
-
-Make this a function over `ViewVector` first, returning `ViewVector`. Then let
-Tensor/view code wrap that result if needed. That keeps the rule small and
-prevents strides/contiguity from leaking into shape inference.
+- Add one direct `view::broadcast_shape(view({}), view({2, 3}))` case so the pure shape function documents its scalar contract without relying on an operator test.
+- Fix and test zero-extent shape inference. The current `std::max(a, b)` result turns `(0,)` broadcast with `(1,)` into `(1,)`; NumPy-style shape inference must preserve the zero extent as `(0,)`, even though tensor operations reject empty tensors in this module.
 
 ## Assignment 5.2: Make Binary Ops Broadcast
 
 ### Agent Feedback / Grading
 
-Status: partially passed. The main expand-plus-strided-kernel path works for the
-tested positive cases, but the Assignment 5.2 test matrix is incomplete.
+Status: partially passed.
 
 What is good:
 
-- `Tensor::binop` now computes a broadcast shape and expands both inputs before
-  dispatch.
-- A `ViewInfo` payload is the right direction for moving shape/stride/offset
-  metadata into Metal.
-- The binary Metal source has been integrated into `default.metallib`, and prior
-  verification recorded successful execution through that path.
-- The command now carries separate input `ViewInfo`s and `Tensor::binop`
-  correctly allocates the output with `final_shape`. That fixes two earlier
-  design issues.
-- Same-shape binary ops pass the existing MLX oracle tests through the new
-  view-info kernel path.
-- Broadcasted binary ops now run against MLX on the required patterns,
-  including `(4, 3)` with `(3,)` and `(2, 1, 4)` with `(3, 1)`, in both operand
-  orders.
-- Tensor-level incompatible-shape rejection is covered for all four binary ops.
+- All four public operations run through the ordinary tensor command path; the special scalar command and Metal kernels have been removed.
+- Rank-0 tensors are represented as ordinary tensors with shape `()` and broadcast correctly against ranks 0 through 2 in `ops_scalar.cpp`.
+- The asymmetric positive matrix in `ops_broadcast.cpp` covers all four operations in both operand orders against MLX-C.
+- Dtype, rank, extent, and compatibility checks happen before output allocation inside the operation path.
 
 Remaining gate work:
 
-- Add the required rank-0 tensor operand case, `() + (2, 3)`, against an oracle.
-- Add tensor-operation coverage for zero-extent rejection before allocation or
-  dispatch.
-- The current positive tests use MLX. That is a valid independent framework
-  oracle, but this module's written contract specifically requires a CPU oracle.
-  Add a small manual CPU broadcast oracle, or revise the contract consistently
-  rather than silently counting MLX as different evidence.
-- Binary ops reject non-contiguous inputs before expanding. That is narrower
-  than the module contract's "strided input views" wording, so either support
-  ordinary strided views or explicitly narrow the course contract. The better
-  course-aligned choice is to remove the rejection because the kernel already
-  receives strides and offsets.
+- Add a public binary-op test with a transposed or nonzero-offset shrunk input. The kernel is stride-aware, but the Module 5 gate requires execution evidence for this path.
+- Add public zero-extent rejection evidence. The existing rank-5 `add`/`sub` tests and direct `check_binary` tests establish the shared rank guard, but direct zero-extent validator tests do not prove rejection before allocation or dispatch.
+- MLX-C on its CPU stream is accepted as the independent oracle; a duplicate manual CPU implementation is not required.
 
 ## Assignment 5.3: Implement Full Reduce `sum`
 
 ### Agent Feedback / Grading
 
-Status: scaffold started; no assignment behavior is complete yet.
+Status: passed for implemented behavior; zero-extent boundary work remains shared module gate work.
 
-`submit_reduce` and a draft `reduce_sum` kernel exist, but neither implements a
-reduction. There is still no public Tensor reduction API or correctness test for
-`sum(a) -> scalar`. The current draft also needs to be moved under
-`comtam/kernels/` and written as valid Metal before it can join the kernel build.
+Full `sum` returns a rank-0 tensor and passes MLX-C comparisons over rank-0 through rank-3 inputs. The threadgroup tree reduction is accepted as intentional kernel-learning work, and MLX-C on its CPU stream is the project-standard numerical oracle.
 
-The in-progress command code currently refers to `Op::REDUCE_SUM` and
-`Op::REDUCE_MAX`, while the enum defines `Op::SUM` and `Op::MAX`. Resolve that
-naming mismatch before treating the scaffold as compilable.
+Also add a public zero-extent rejection test that demonstrates failure before dispatch. The direct validator test is useful unit coverage but does not establish the whole operation ordering.
 
 ## Assignment 5.4: Implement Axis Reduce And `mean`
 
 ### Agent Feedback / Grading
 
-Status: not started at the public API and test level.
+Status: passed for implemented behavior; zero-extent boundary work remains shared module gate work.
 
-There is no axis reduction API, no chosen `keepdim` policy, and no `mean`
-implementation or tests.
+Full and axis `sum` and `mean` pass MLX-C tests. Axis 0 and axis 1 of a `(4, 5)` tensor are covered with both `keepdim=false` and `keepdim=true`; invalid axes and rank-0 axis reduction are rejected. `mean` is correctly composed from `sum` and division by a rank-0 tensor, with no dedicated mean kernel.
+
+MLX-C on its CPU stream is accepted as the independent oracle, so no duplicate manual reduction implementation is required. Add public zero-extent rejection evidence before allocation or dispatch; rank-5 `mean` already exercises the shared reduction guard.
 
 ## Assignment 5.5: Implement Naive 2-D Matmul
 
 ### Agent Feedback / Grading
 
-Status: partially passed. Contiguous 2-D matmul matches the oracle, but the
-required layout and validation matrix is incomplete.
+Status: partially passed.
 
 What is good:
 
-- `Tensor::matmul` exists and validates 2-D inputs plus inner-dimension match.
-- `matmul_fp32` is wired through a dedicated `submit_matmul` path.
-- A forward test compares matmul against MLX.
-- The naive kernel now computes the correct dot product and passes MLX oracle
-  tests for contiguous inputs.
-- The launch uses CUDA-style threadgroup indexing through
-  `dispatchThreadgroups`, while still staying naive: one thread computes one
-  output element, with no tiling or threadgroup memory.
+- Ordinary and non-contiguous matmul cases pass MLX-C comparisons, including transposed left, right, and both inputs.
+- The strided kernel reads through view offsets and strides with one thread per output and a direct loop over `k`.
+- Dtype, positive extents, rank two, and inner-dimension compatibility are validated before output allocation in `tensor::matmul`.
+- The rectangular dispatch grid now maps columns to `x` and rows to `y`, and the contiguous fast path is restricted to zero-offset views.
 
 Remaining gate work:
 
-- Add a transposed left or right input test. The kernel uses
-  `physical_offset`, so this test should validate the intended strided-input
-  design rather than require materialization.
-- Add tests for bad rank and mismatched inner dimensions.
-- Add explicit zero-extent rejection before output allocation or dispatch.
-- The positive tests use MLX, while the module contract asks for a CPU triple
-  loop. Add that small manual oracle or change the course-wide oracle policy.
+- The tiled `16 x 16` contiguous path is accepted as intentional kernel-optimization learning. Add a non-square tile-boundary case such as `(17, 19) @ (19, 33)` so different row/column tile counts and partial tiles are tested. The existing transposed cases exercise the general strided path.
+- MLX-C on its CPU stream is accepted as the independent oracle; a duplicate CPU triple loop is not required.
+- Add public bad-rank and zero-extent rejection evidence. Direct validator tests do not prove public API ordering.
 
 ## Module 5 Verdict
 
-Status: not passed.
+Status: not passed yet.
+
+This worktree compiles and all current tests pass. The scalar refactor is a clear architectural improvement: a scalar is now just a rank-0 tensor, and binary dispatch has one command and one kernel family. The course now accepts MLX-C as the sole independent numerical oracle and accepts the tiled contiguous matmul path as explicit optimization-learning work. The gate remains blocked only by targeted behavioral and coverage gaps.
+
+The minimum remaining work is:
+
+1. Add one non-contiguous public broadcast test.
+2. Fix zero-extent shape inference and move zero-extent rejection ahead of storage allocation, then test that public boundary.
+3. Add a public matmul rank-error test and a non-square tile-boundary fast-path test.
 
 Verification:
 
 ```text
-compiled        -> not verified for the current worktree
-smoke ran       -> not run because the current build did not complete
-gate passed     -> failed
+compiled        -> passed
+full CTest      -> passed, 40/40
+smoke ran       -> passed through Metal-backed CTest cases
+gate passed     -> no
 ```
 
 Commands run:
 
 ```text
-cmake --build build
+cmake --build build -j 6
+ctest --test-dir build --output-on-failure
+git diff --check
 ```
 
-The current build stopped while generating `default.metallib` because `xcrun`
-could not find the `metallib` utility in the selected Xcode toolchain. This is
-an environment/toolchain failure, so it does not prove a C++ or Metal source
-failure, but the current reduction scaffold also contains the enum-name mismatch
-noted in Assignment 5.3 and has not been verified.
-
-Prior grading recorded 27/27 tests passing for broadcasted binary ops and
-contiguous matmul. That historical result is useful regression evidence, but it
-is not current-worktree verification and it does not satisfy the Module 5 gate.
-
-The course contract now explicitly caps GPU-facing operations at rank four;
-the implementation still needs rejection before fixed-rank descriptor
-conversion and rank-5 negative tests. The Module 4 correctness map also still
-labels broadcasting and matmul as unsupported, so the updated Module 5 exit
-gate is not met even for the implemented cases.
-
-Do not start Module 5A or Module 6 yet. Finish the missing broadcast edge cases
-and matmul validation/layout cases, implement full and axis reductions plus
-full/axis `mean`, update the Module 4 correctness map, then rerun the build and
-complete CTest suite.
+Do not start Module 5A yet. The remaining items are small, targeted correctness and path-coverage tasks, not broad safety hardening.
