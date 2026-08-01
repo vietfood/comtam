@@ -55,6 +55,14 @@ goals. Preserve correctness and architectural prerequisites, but allow a harder
 implementation when it teaches a relevant topic and its additional execution
 paths are tested independently.
 
+Treat the course as living guidance rather than a mechanism for forcing the
+source back to an older design. When the current source contains a deliberate,
+technically justified, tested design that is better suited to the user's
+learning goal, update the course and grading contract to describe that design
+instead of blocking progress solely for textual conformance. Existing code is
+not self-justifying: require a concrete mechanism, tradeoff, and relevant test
+evidence before calling a divergence better.
+
 Current course rule:
 
 - Do not start module N+1 until module N's gate is met.
@@ -102,6 +110,10 @@ For code changes:
 - Prefer independent oracles and exact/epsilon comparisons. MLX C running on its
   CPU stream is sufficient as the numerical oracle; tiny manual CPU oracles are
   optional when they make a failure easier to understand.
+- When the user explicitly says they already built or tested the current
+  revision, do not rerun those commands by default. Record the result as
+  user-verified rather than independently verified, and rerun only when the user
+  asks, evidence conflicts, or a materially risky unresolved issue requires it.
 
 For module grading:
 
