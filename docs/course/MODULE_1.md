@@ -2,6 +2,22 @@
 
 Settle storage before views.
 
+## Module Contract
+
+**Prerequisite:** a working single-device Metal context and host-to-buffer copy
+path. **Deliverables:** document one byte/element conversion boundary, preserve
+one `Storage` owner per `MTL::Buffer`, prove shared tensor headers keep that
+storage alive, and keep `Storage::print` explicitly float32-only debug output.
+`Storage` remains a move-only byte buffer; views, extra dtypes, allocator
+caches, and asynchronous lifetime management are unsupported here.
+
+For a first completion, add a float32 exact round-trip test, a byte-count
+mismatch rejection test, and a sharing/lifetime test that destroys one header
+before reading through the other. Passing CTest cases plus the documented
+conversion boundary are the completion evidence. This contract clarifies the
+original Module 1 gate; it does not reopen a previously passed module to demand
+new APIs or broader dtype support.
+
 In an eager Metal framework, the first thing that will hurt you is not wrong
 math. It is unclear lifetime and unclear sizing: a buffer freed while a command
 still references it, two tensors that accidentally copy when they should share,
@@ -22,7 +38,7 @@ views do not allocate
 
 That is deliberately smaller than ATen's storage system. Do not add custom
 deleters, backend registries, allocator caches, or dtype-aware storage unless a
-failing test forces the design to grow. See [`../AVOID.md`](../AVOID.md).
+failing test forces the design to grow. See [`../note/AVOID.md`](../note/AVOID.md).
 
 ## Mental Model
 
@@ -42,8 +58,8 @@ Tensor             DType + View + shared_ptr<Storage>
 The current code should keep matching this shape:
 
 ```text
-comtam/core/storage.h   Storage: size_ + NS::SharedPtr<MTL::Buffer>, move-only
-comtam/tensor.h         Tensor: dtype_, View view_, shared_ptr<Storage> storage_
+comtam/core/storage.h       storage: size_ + NS::SharedPtr<MTL::Buffer>, move-only
+comtam/tensor/tensor.h      tensor: dtype_, view_, shared_ptr<storage> storage_
 ```
 
 ## Suspicious Assumptions To Test
@@ -83,7 +99,9 @@ second dtype forces it.
 **Tests to write:**
 
 - A float32 round-trip test that asserts exact equality.
-- A negative test that a mismatched byte count throws.
+- A negative test that a requested copy byte count differs from the source or
+  destination buffer byte count and throws before copying. The test must also
+  show that the destination contents were not changed.
 
 ## Assignment 1.2: Prove Sharing Works ⭐⭐
 
@@ -103,7 +121,9 @@ Hint: `Device::submit` currently calls `waitUntilCompleted`, so the first
 version can stay synchronous.
 
 **Test to write:** Build two tensors over one storage, destroy one, and assert
-the survivor still returns correct data.
+the survivor still returns correct data. In a separate assertion, mutate the
+raw shared storage through one live header and read it through the other; shared
+storage means that aliasing is observable, not copied away.
 
 ## Assignment 1.3: Keep `Storage::print` Small ⭐
 

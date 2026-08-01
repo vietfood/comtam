@@ -1,10 +1,50 @@
-BasedOnStyle: LLVM
+# Base style initialization
+BasedOnStyle: Google
+
+# Core Layout & Geometry
+Language: Cpp
+ColumnLimit: 100
 IndentWidth: 4
+ContinuationIndentWidth: 4
 TabWidth: 4
 UseTab: Never
-ColumnLimit: 100
-AccessModifierOffset: -4
+
+# Code Density & Functionality
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Braces Management (Attach braces to the same line to save vertical space)
+BreakBeforeBraces: Custom
 BraceWrapping:
-  AfterClass: true
-  AfterFunction: true
-AllowShortFunctionsOnASingleLine: None
+  AfterClass: false
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+# Alignment Rules (Prevents extreme whitespace modifications during small edits)
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: None
+AlignConsecutiveDeclarations: None
+AlignEscapedNewlines: Left
+AlignOperands: Align
+AlignTrailingComments: true
+
+# Advanced Formatting Modernizations
+PointerAlignment: Left
+SortIncludes: CaseSensitive
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens: ControlStatements
+SpacesInContainerLiterals: false

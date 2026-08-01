@@ -1,136 +1,158 @@
-## Module 9: Hardening After Correctness
+## Module 9: Core Runtime Hardening
 
-Optimize and harden comtam, but only where a measurement or a failing case
-demands it.
+Freeze the educational runtime's supported behavior before expanding its product
+surface.
 
-## Why This Module Is Last
+## Why This Module Ends The Core Course
 
-comtam's rule is strict: no optimization before a failing performance
-measurement. Until Module 8 produced a real training run with real timings, you
-had nothing to optimize against. Now you do.
+Module 8 proves that the happy path trains. A usable core must also define what
+happens at its boundaries: empty tensors, scalar tensors, invalid axes, kernel
+failures, deterministic reruns, and long-lived execution. This module turns
+implicit assumptions into tested contracts.
 
-This module is where the discipline pays off or collapses. Every change here must
-point to a number or a bug, not a feeling that the code "should" be faster or
-more general.
+Performance optimization moves to Module 13. The Module 8 timing baseline may
+reveal future work, but this module does not force an optimization merely to
+claim progress.
 
-## The Hardening Rule
+## Module Contract
 
-Before any change in this module, write down:
+**Prerequisites:** Module 8 has passed with a recorded training configuration,
+accuracy result, lifetime audit, and performance baseline.
+
+**You will produce:**
+
+- a written v0 supported-semantics matrix
+- tests for scalar, empty, rank, shape, axis, and numerical edge behavior
+- consistent host and Metal error propagation
+- deterministic RNG/training replay evidence
+- a sustained stress test and explicit ownership counters
+- a core-course completion report with deferred work ranked by evidence
+
+**Supported scope:** the exact float32, rank, view, op, autograd, and training
+surface implemented through Module 8.
+
+**Not required:** async execution, allocator caching, serialization, Python,
+additional backends, broad dtype support, or a performance improvement. Those
+belong to the production track and must not be smuggled into this gate.
+
+**Completion evidence:** `docs/solution/MODULE_9.md` must distinguish build,
+unit/integration tests, full training, stress results, and any unrun checks.
+
+## Assignment 9.1: Write The Supported-Semantics Matrix ⭐⭐
+
+**Task:** Inventory every public tensor/view/op/autograd/nn entry point and
+record its supported inputs and failure behavior.
+
+At minimum, the matrix records:
+
+- dtype support and dtype mismatch behavior
+- rank range, including the current GPU metadata rank cap
+- scalar and zero-size behavior
+- contiguous and non-contiguous input support
+- axis normalization and out-of-range behavior
+- broadcasting and `keepdim` policy
+- whether an op is differentiable
+- whether mutation is allowed and how it affects autograd
+- synchronization/error boundary
+
+This is a contract extracted from tests and implementation, not an aspirational
+feature list. Unsupported cases should be explicit errors, not blank cells.
+
+## Assignment 9.2: Test Scalar, Empty, And Boundary Shapes ⭐⭐⭐
+
+**Task:** Turn each supported edge in the matrix into a test and each unsupported
+edge into an error test.
+
+Required categories:
+
+- rank-0 scalar construction, host transfer, elementwise ops, reduction, and
+  backward
+- zero-length dimensions through views and every op where mathematically defined
+- reduction of an empty domain, with an explicit policy per reduction
+- rank at the supported maximum and rank above it
+- size-one broadcast axes and incompatible dimensions
+- negative, normalized, duplicate, and out-of-range axes according to the
+  chosen API
+- overflow-checked `numel * sizeof(dtype)` allocation sizing
+
+Do not force one universal empty-tensor rule. For example, sum has an identity
+while mean of an empty domain is undefined; encode the chosen behavior per op.
+
+## Assignment 9.3: Harden Error Propagation ⭐⭐
+
+**Task:** Ensure invalid user input fails before dispatch and Metal failures
+surface after command completion with actionable context.
+
+An error should identify the operation, relevant shapes/dtype/axis, and the
+underlying Metal message when present. Tests should assert stable error
+categories or meaningful substrings rather than an entire implementation-detail
+sentence.
+
+Required cases include invalid matmul shapes, incompatible broadcasts, invalid
+reductions, unavailable/missing kernels, buffer byte mismatch, command-buffer
+failure where it can be safely induced, and forbidden autograd mutation.
+
+## Assignment 9.4: Prove Reproducibility ⭐⭐
+
+**Task:** Define the relationship between an explicit RNG seed and generated
+values, parameter initialization, batching order, and training results.
+
+Run the deterministic Module 7 regression twice from fresh contexts and require
+the same initial parameters, batch sequence, and final values within the chosen
+policy. Run the Module 8 configuration twice and report accuracy/loss variation;
+bitwise identity is not required unless the implementation promises it.
+
+## Assignment 9.5: Run The Core Stress Suite ⭐⭐⭐
+
+**Task:** Combine repeated host transfer, view creation, forward/backward,
+optimizer updates, and context construction/destruction into a bounded stress
+target.
+
+The test must have a fixed seed and iteration count, check every returned error,
+and assert framework-owned object counts return to baseline. Record RSS as
+diagnostic evidence, not as the sole pass condition.
+
+Run an AddressSanitizer/UndefinedBehaviorSanitizer host-side configuration where
+the toolchain supports it. If Metal or third-party code prevents a sanitizer
+configuration, document the exact gap instead of claiming it passed.
+
+## Assignment 9.6: Write The Core Completion Report ⭐
+
+**Task:** Summarize what comtam now supports, what is deliberately unsupported,
+and which production-track pressure is evidenced by the training and stress
+runs.
+
+Rank deferred work by a concrete reason:
 
 ```text
-What measurement or failing case forces this?
-What is the current number / current failure?
-What is the target number / fixed behavior?
-How will a test or benchmark confirm it?
+failure or measurement -> proposed module -> acceptance evidence
 ```
 
-If you cannot fill those in, do not make the change. Put it in the Module 9
-solution note as deferred instead.
-
-## Assignment 9.1: Build A Tiny Benchmark Harness ⭐⭐
-
-**Task:** Add a small, honest timer around whole ops and whole training steps.
-
-Rules:
-
-- Time end to end (host call to result available), since `Device::submit` blocks
-  on `waitUntilCompleted`.
-- Warm up before timing (first launch compiles/loads pipelines).
-- Report median over several runs, not a single sample.
-
-This is the "simple command timing" stage from [`../AVOID.md`](../AVOID.md), not
-GPU counters. Counters come only if this coarse timing is not enough.
-
-**Deliverable:** A benchmark that prints per-op and per-step timings for the
-Module 8 model.
-
-## Assignment 9.2: Find The Real Bottleneck ⭐⭐
-
-**Task:** Use the harness to find where time actually goes.
-
-Questions:
-
-1. Is the bottleneck matmul, the reductions, readback, or per-launch overhead
-   from blocking on every command?
-2. How much time is host-side (allocation, view gather in `to_vector`) versus
-   GPU-side?
-
-**Recommended approach:** Measure before you guess. Most people guess matmul and
-are sometimes wrong; per-launch synchronization and CPU-side readback gathers are
-common surprises.
-
-**Deliverable:** A ranked list of the top two or three costs, with numbers.
-
-## Assignment 9.3: Optimize The Top Bottleneck Only ⭐⭐⭐
-
-**Task:** Make exactly one improvement, targeting the measured top cost.
-
-Candidate optimizations, chosen by what the measurement says:
-
-- **Matmul tiling:** use threadgroup memory to cut global memory traffic. This is
-  GPU programming, not framework design, which is why it was deferred this long.
-- **Tree reduction:** replace the naive Module 5 reduce with a parallel tree if
-  reductions dominate.
-- **GPU readback / contiguous-materialize:** replace the CPU gather in
-  `to_vector` (Module 2 Design B) if readback dominates.
-- **Fewer syncs:** stop blocking on every command if per-launch overhead
-  dominates. This is a real ownership change; be careful about lifetime.
-
-Rules:
-
-- One change. Re-run the benchmark. Keep it only if the number improves.
-- Re-run the full correctness and gradient test suites. A faster wrong answer is
-  worse than a slow right one.
-
-**Why this assignment:** Optimizing the measured bottleneck, one change at a time,
-with tests green, is the entire skill. Everything else is folklore.
-
-## Assignment 9.4: Harden The Failure Surface ⭐⭐
-
-**Task:** Turn the sharpest remaining correctness risks into explicit behavior.
-
-Candidates (pick the ones your previous solution notes flagged):
-
-1. Division by zero and NaN/Inf handling: define and test the behavior.
-2. Shape and dtype validation messages: are they clear at the op boundary?
-3. Command buffer error checking after `waitUntilCompleted` (see
-   [`../NOTE.md`](../NOTE.md)). Does a kernel failure throw a readable error?
-4. Empty and scalar tensors through every op.
-
-**Deliverable:** Tests that pin each chosen behavior, and clear errors where the
-operation is genuinely unsupported.
-
-## Assignment 9.5: Decide What To Earn Next ⭐
-
-**Task:** Write a short "what comtam has earned" note.
-
-By now the framework may finally have pressure for things [`../AVOID.md`](../AVOID.md)
-told you to postpone. Re-evaluate, honestly:
-
-1. Does repeated code justify an `Allocator`, or just a helper?
-2. Does a measurement justify buffer caching?
-3. Does a second dtype have a concrete user, or is it speculative?
-4. Does any abstraction now pass the test: "what current code became simpler
-   because this exists?"
-
-**Deliverable:** A ranked, evidence-backed list of what to build next, and an
-equally honest list of what to keep postponing.
+An optimization experiment that does not improve the baseline should be recorded
+and rejected. Core completion never requires keeping an unjustified change.
 
 ## Module 9 Checklist
 
-- [ ] 9.1 Build a warm-up-aware benchmark harness.
-- [ ] 9.2 Measure and rank the real bottlenecks.
-- [ ] 9.3 Optimize only the top bottleneck; keep tests green.
-- [ ] 9.4 Harden the sharpest failure cases with tests.
-- [ ] 9.5 Write an evidence-backed "what to earn next" note.
+- [ ] 9.1 Public supported-semantics matrix matches code and tests.
+- [ ] 9.2 Scalar, empty, rank, shape, and axis boundaries are pinned by tests.
+- [ ] 9.3 Validation and Metal errors are actionable and tested.
+- [ ] 9.4 RNG and training reproducibility policy is demonstrated.
+- [ ] 9.5 Bounded stress and available sanitizer checks are recorded.
+- [ ] 9.6 Core completion/deferred-work report is evidence-backed.
 
 ## Exit Criteria
 
-comtam has completed the course when:
+The core course is complete when:
 
-1. There is a benchmark harness and at least one optimization justified by it.
-2. The full correctness and gradient suites still pass after optimization.
-3. Failure cases (bad shapes, kernel errors, edge tensors) have defined,
-   tested behavior.
-4. Every abstraction in the codebase can answer "what became simpler because of
-   it", and you have a written, evidence-backed plan for what comes next.
+1. Every public operation has an explicit supported/unsupported contract.
+2. Edge tensors and failure paths have deterministic tests rather than implied
+   behavior.
+3. Full correctness, gradient, training, and stress suites pass in the recorded
+   environment.
+4. Framework-owned state remains bounded across sustained execution.
+5. Reproducibility claims match observed reruns.
+6. No optimization or abstraction was added solely because the course gate
+   demanded activity.
+
+Completion here means "correct educational eager runtime." Modules 10-15 turn
+that core into a narrow production-quality Apple runtime.

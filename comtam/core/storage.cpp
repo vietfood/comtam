@@ -1,22 +1,35 @@
-#include "comtam/core/storage.h"
-#include "comtam/utils/common.h"
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
 
-#include "Metal/MTLResource.hpp"
-#include "Metal/MTLDevice.hpp"
-#include <iostream>
+#include "comtam/core/storage.h"
+
 #include <string>
+
+#include "Metal/MTLDevice.hpp"
+#include "Metal/MTLResource.hpp"
+#include "comtam/macros/log.h"
+#include "comtam/utils/common.h"
 
 using namespace comtam::core;
 
-Storage::Storage(size_t bytes, MTL::Device* device) : size_(bytes) {
+storage::storage(size_int bytes, MTL::Device* device) : size_(bytes) {
     buffer_ = NS::TransferPtr(device->newBuffer(bytes, MTL::ResourceStorageModeShared));
 
     if (!buffer_) {
-        std::cerr << "[ERROR] Failed to allocate buffer of size " << bytes << "\n";
+        COMTAM_LOG_ERR("Failed to allocate buffer of size {}", bytes);
         throw std::bad_alloc();
     }
 }
 
-void Storage::print(const std::string& label) const {
-    comtam::utils::print_array(static_cast<float*>(buffer_->contents()), size_ / sizeof(float), label);
+void storage::print(const std::string& label) const {
+    comtam::utils::print_array(static_cast<float*>(buffer_->contents()), size_ / sizeof(float),
+                               label);
 }

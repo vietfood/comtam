@@ -1,15 +1,26 @@
-#include <catch2/catch_test_macros.hpp>
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
 
 #include "comtam/core/context.h"
 
+#include <catch2/catch_test_macros.hpp>
+
 TEST_CASE("Context creates a Metal device and kernel library", "[context][metal]") {
-    comtam::core::Context context;
+    comtam::core::context context;
     REQUIRE(context.device().get() != nullptr);
     REQUIRE(context.device().queue() != nullptr);
 }
 
 TEST_CASE("Device should reject byte-count mismatches", "[device][metal]") {
-    comtam::core::Context context;
+    comtam::core::context context;
     REQUIRE(context.device().get() != nullptr);
     REQUIRE(context.device().queue() != nullptr);
 

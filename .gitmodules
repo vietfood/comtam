@@ -4,9 +4,18 @@
 [submodule "refs/magnetron"]
 	path = refs/magnetron
 	url = https://github.com/MarioSieg/magnetron.git
-[submodule "refs/banhxeo"]
-	path = refs/banhxeo
-	url = https://github.com/vietfood/banhxeo.git
 [submodule "vendor/Catch2"]
 	path = vendor/Catch2
 	url = https://github.com/catchorg/Catch2.git
+[submodule "vendor/mlx-c"]
+	path = vendor/mlx-c
+	url = https://github.com/ml-explore/mlx-c.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git
+[submodule "refs/mlx"]
+	path = refs/mlx
+	url = https://github.com/ml-explore/mlx.git
+[submodule "refs/luminal"]
+	path = refs/luminal
+	url = https://github.com/luminal-ai/luminal.git

@@ -3,6 +3,26 @@
 Make one real op run on the GPU, end to end, with one obvious owner for every
 Metal object.
 
+## Module Contract
+
+**Prerequisite:** Module 2 can read contiguous and non-contiguous views
+correctly on the host. **Deliverables:** public `add`, `sub`, `mul`, and `div`
+build a binary `Command`, dispatch only through `Device::submit`, and return a
+new contiguous result. Trace and record the submit/kernel binding contract, use
+an exhaustive op-to-kernel mapping, and state the autorelease-pool policy.
+
+This module supports float32, same-shape, contiguous binary inputs only.
+Broadcasting, strided GPU reads, reductions, matmul, autograd, asynchronous
+submission, and fusion remain unsupported. Completion evidence is CPU-oracle
+tests for all four operations on the listed asymmetric shapes, plus rejection
+tests for mismatched shapes and non-contiguous inputs. This contract records the
+original Module 3 gate; it does not make a previously passed implementation add
+later dispatch features.
+
+At this historical stage, all four public binary operations are independently
+dispatched. Mandatory Module 5A later retires the physical `sub` and `div`
+dispatch paths while preserving these public APIs and their verified semantics.
+
 ## Why This Module Exists
 
 This is where comtam stops being a memory manager and becomes a tensor
@@ -141,6 +161,11 @@ mismatched shapes: throws
 non-contiguous input: throws (until Module 5)
 ```
 
+Use finite, non-zero divisors and compare each result element, not just a
+printed array or aggregate. A mismatched dtype must also reject if the public
+API currently exposes more than float32; otherwise document float32-only as the
+reason no dtype-mismatch construction test exists.
+
 **Why this assignment:** This is the first op that runs on the GPU and is checked
 against a reference. It sets the template every later op will follow.
 
@@ -161,7 +186,7 @@ Questions:
 
 **Recommended first choice:** Replace the map with a small `switch` that returns
 the kernel name, and make the default case a hard error. With four ops, a map is
-more machinery than the problem needs (see [`../AVOID.md`](../AVOID.md)). An
+more machinery than the problem needs (see [`../note/AVOID.md`](../note/AVOID.md)). An
 exhaustive switch turns "forgot to handle the new op" into a build failure.
 
 ## Assignment 3.5: One Autorelease Pool Per Launch Boundary ⭐⭐
@@ -170,7 +195,7 @@ exhaustive switch turns "forgot to handle the new op" into a build failure.
 
 Background: command buffers and encoders are autoreleased. Without a pool, a
 training loop that submits thousands of commands can accumulate them. See
-[`../NOTE.md`](../NOTE.md) on autorelease pools.
+[`../note/METAL_USAGE.md`](../note/METAL_USAGE.md) on autorelease pools.
 
 Questions:
 

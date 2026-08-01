@@ -204,7 +204,7 @@ What is good:
 
 Tests added during review:
 
-- CPU-oracle checks for `add/sub/mul/div` on asymmetric shapes `(2, 3)`,
+- External-oracle checks for `add/sub/mul/div` on asymmetric shapes `(2, 3)`,
   `(3, 4)`, and `(2, 3, 4)`.
 - Throw tests for mismatched shapes.
 - Throw tests for non-contiguous inputs.
@@ -320,7 +320,7 @@ and after updating the kernel bounds contract.
 What is now solid:
 
 - The eager binary op path exists for `add/sub/mul/div`.
-- Existing binary ops match CPU oracles on asymmetric shapes.
+- Existing binary ops match MLX C oracles on asymmetric shapes.
 - Mismatched shapes and non-contiguous inputs are rejected by tests.
 - Every public Tensor binary op goes through `Device::submit`.
 

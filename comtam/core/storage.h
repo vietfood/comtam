@@ -1,27 +1,35 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
+
 #pragma once
 
+#include <cstddef>
+#include <string>
 #include <type_traits>
 
 #include "Foundation/NSSharedPtr.hpp"
 #include "Metal/MTLBuffer.hpp"
-#include <cstddef>
-#include <stdexcept>
-#include <string>
+#include "comtam/macros/log.h"
+#include "comtam/types.h"
 
 namespace comtam::core {
-class Storage {
-public:
-    Storage(size_t bytes, MTL::Device* device);
-    ~Storage() = default;
+class storage {
+   public:
+    storage(size_int bytes, MTL::Device* device);
+    ~storage() = default;
 
     // move constructor
-    Storage(Storage&& other) noexcept
-    : size_(other.size_)
-    , buffer_(std::move(other.buffer_))
-    {}
+    storage(storage&& other) noexcept : size_(other.size_), buffer_(std::move(other.buffer_)) {}
 
-    Storage& operator=(Storage&& other) noexcept
-    {
+    storage& operator=(storage&& other) noexcept {
         if (this != &other) {
             size_ = other.size_;
             buffer_ = std::move(other.buffer_);
@@ -30,25 +38,25 @@ public:
     }
 
     // we want move only
-    Storage(const Storage& other) = delete;
-    Storage& operator=(const Storage& other) = delete;
+    storage(const storage& other) = delete;
+    storage& operator=(const storage& other) = delete;
 
-    size_t size() const { return size_; }
+    size_int size() const { return size_; }
     MTL::Buffer* ptr() { return buffer_.get(); }
     const MTL::Buffer* ptr() const { return buffer_.get(); }
 
     template <typename T>
-    T at(size_t index) const {
-        const size_t byte_offset = index * sizeof(T);
-        if (byte_offset + sizeof(T) > size_) {
-            throw std::runtime_error("[ERROR] Storage index out of bounds");
-        }
+    T at(size_int index) const {
+        const size_int byte_offset = index * sizeof(T);
+        COMTAM_CHECK_AND_THROW(byte_offset + sizeof(T) <= size_, std::runtime_error,
+                               "Storage index out of bounds");
         return static_cast<const T*>(buffer_->contents())[index];
     }
 
     void print(const std::string& label) const;
-private:
-    size_t size_;
+
+   private:
+    size_int size_;
     NS::SharedPtr<MTL::Buffer> buffer_;
 };
-}
+}  // namespace comtam::core

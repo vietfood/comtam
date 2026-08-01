@@ -1,15 +1,27 @@
+/*
+** +--( ~_~ )-------------------------------------------------------------+
+** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
+** | Licensed under the Apache License, Version 2.0                        |
+** | AI assist :  Sonnet 5 (Claude)                                        |
+** |                                                                       |
+** | Website : https://lenguyen.vercel.app                                 |
+** | GitHub  : https://github.com/vietfood/comtam                          |
+** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** +--( ^_^ )-------------------------------------------------------------+
+*/
 #pragma once
 
 #include <algorithm>
 #include <concepts>
-#include <iostream>
 #include <random>
-#include <ranges>
-#include <stdexcept>
 #include <vector>
 
+#include "comtam/macros/log.h"
+#include "comtam/macros/macros.h"
+#include "comtam/types.h"
+
 namespace comtam::utils {
-inline std::mt19937& rng() {
+COMTAM_INLINE std::mt19937& rng() {
     thread_local std::mt19937 gen{std::random_device{}()};
     return gen;
 }
@@ -21,10 +33,8 @@ inline std::mt19937& rng() {
  * Works for any arithmetic type (int, float, double, etc.).
  */
 template <std::integral T>
-std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
-    if (lo > hi) {
-        throw std::invalid_argument("lo must be <= hi");
-    }
+std::vector<T> generate_random_array(size_int n, T lo, T hi) {
+    COMTAM_CHECK_AND_THROW(lo <= hi, std::invalid_argument, "lo must be <= hi");
     std::uniform_int_distribution<T> dist{lo, hi};
     std::vector<T> out(n);
     std::ranges::generate(out, [&] { return dist(rng()); });
@@ -32,13 +42,11 @@ std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
 }
 
 template <std::floating_point T>
-std::vector<T> generate_random_array(std::size_t n, T lo, T hi) {
-    if (lo > hi) {
-        throw std::invalid_argument("lo must be <= hi");
-    }
+std::vector<T> generate_random_array(size_int n, T lo, T hi) {
+    COMTAM_CHECK_AND_THROW(lo <= hi, std::invalid_argument, "lo must be <= hi");
     std::uniform_real_distribution<T> dist{lo, hi};
     std::vector<T> out(n);
     std::ranges::generate(out, [&] { return dist(rng()); });
     return out;
 }
-}
+}  // namespace comtam::utils

@@ -1,126 +1,200 @@
-## Module 8: Small Training Examples
+## Module 8: End-To-End Training
 
-Prove comtam can learn a real task end to end.
+Train a small multi-layer classifier and turn one-step correctness into sustained
+runtime evidence.
 
 ## Why This Module Exists
 
-Module 7 trained a single linear layer. That proves the plumbing connects. This
-module proves the plumbing is strong enough for a real, multi-layer, multi-class
-problem with a real dataset.
+Module 7 proves that one layer can learn a deterministic function. A real
+mini-batch classifier adds multiple layers, a numerically sensitive loss, data
+loading, repeated GPU submission, and validation metrics. These pressures expose
+graph leaks, unstable math, stale gradients, and ownership errors that a single
+forward/backward test cannot reveal.
 
-The classic gate is a small MLP on MNIST. It is the smallest task that exercises
-multiple layers, a real loss, batching, and many optimizer steps in a row. If
-comtam trains it to a believable accuracy, the eager stack is genuinely working.
+## Module Contract
 
-## Mental Model
+**Prerequisites:** Module 7 has passed, including stable parameter identity,
+graph release, deterministic initialization, and SGD.
 
-Nothing new conceptually. The same training step, scaled up:
+**You will produce:**
+
+- a small MNIST IDX loader kept outside the framework core
+- an explicit target representation compatible with the dtype policy
+- stable softmax cross-entropy with forward and gradient oracles
+- a deterministic two-layer MLP training executable/test
+- measurable convergence, validation accuracy, timing, and lifetime evidence
+
+**Supported scope:** MNIST, host-side batching, float32 tensors, a two-layer MLP,
+ReLU, softmax cross-entropy, and SGD.
+
+**Not required:** a generic data-loader subsystem, image IO in `comtam_lib`, GPU
+data augmentation, convolution, mixed precision, or distributed training.
+
+**Completion evidence:** record dataset identity/checksum or fixture source,
+seed, batch size, model dimensions, learning rate, epochs, final accuracy, timing,
+and memory/lifetime results in `docs/solution/MODULE_8.md`.
+
+## Target Representation Decision
+
+The framework is float32-first, while class-index targets normally use an integer
+dtype. Do not let MNIST silently introduce an incomplete dtype system.
+
+The recommended core-course policy is float32 one-hot targets of shape
+`(batch, classes)`. Cross-entropy then accepts:
+
+```text
+logits:  float32 (batch, classes)
+targets: float32 (batch, classes), one-hot rows
+result:  float32 scalar
+```
+
+Validate that shapes match and each target row is a valid one-hot vector within
+the chosen tolerance. Accuracy may copy logits to the host and compute `argmax`
+there.
+
+You may instead introduce integer class-index targets, but then the assignment
+also includes defining that dtype's storage size, host transfer, validation, and
+kernel contract. Adding an integer enum without those semantics does not count.
+
+## Assignment 8.1: Parse A Reproducible MNIST Fixture ⭐⭐
+
+**Task:** Implement IDX image/label parsing in example or test-support code,
+never in the tensor runtime.
+
+The parser must:
+
+- validate IDX magic numbers and big-endian dimensions
+- reject truncated files and inconsistent image/label counts
+- normalize pixels to `[0,1]` float32
+- convert labels to the chosen target representation
+- return deterministic batches without hidden shuffling
+
+Do not make the required unit tests depend on a network download. Check in a
+small legal fixture or construct tiny IDX byte fixtures in the test. The full
+training executable can accept an explicit dataset directory.
+
+**Tests:** valid miniature image/label files, wrong magic, truncation, mismatched
+counts, normalization endpoints, and target conversion.
+
+## Assignment 8.2: Implement Stable Softmax Cross-Entropy ⭐⭐⭐
+
+**Task:** Add one public differentiable operation,
+`softmax_cross_entropy(logits, targets)`, backed by a dedicated forward path and
+local backward rule. Do not add public `max`, `exp`, or `log` tensor operations
+as side effects of this assignment; those belong in an operator-coverage project
+with their own semantic and gradient contracts.
+
+The forward kernel or internal implementation uses log-sum-exp stability per
+row:
+
+```text
+row_max = maximum class logit in the row
+shifted = logits - row_max
+logsumexp = log(sum(exp(shifted)))
+row_loss = -sum(targets * (shifted - logsumexp))
+loss = sum(row_loss) / batch_size
+```
+
+`row_max`, exponentiation, logarithm, and softmax are private implementation
+details of this op in the core course. They do not enter the public op enum/API
+unless a later module deliberately specifies and tests them.
+
+For one-hot targets, the logits gradient is:
+
+```text
+(softmax(logits) - targets) / batch_size
+```
+
+Save only what backward needs. Define behavior for batch size zero as an error;
+do not return a NaN loss silently.
+
+**Tests:**
+
+- forward comparison to a double-precision CPU oracle
+- numerical gradient check on a small logits matrix
+- invariance to adding the same constant to every class in a row
+- finite loss and gradients for logits near `+1000` and `-1000`
+- invalid target shape/content and empty batch rejection
+
+## Assignment 8.3: Build The MLP And Training Loop ⭐⭐⭐
+
+**Task:** Train `linear -> relu -> linear` using explicit mini-batches:
 
 ```text
 for each epoch:
-  for each batch (x, target):
+  for each batch:
     optimizer.zero_grad()
-    logits = model(x)
-    loss = cross_entropy(logits, target)
+    logits = model.forward(x)
+    loss = softmax_cross_entropy(logits, target)
     loss.backward()
     optimizer.step()
 ```
 
-The new pressures are practical: data loading, batching, numerical stability of
-the loss, and running thousands of GPU commands without leaking.
+Use a fixed seed and record the full hyperparameter configuration. Start with a
+small subset or one batch for debugging, but that does not satisfy the gate.
 
-## Assignment 8.1: Load MNIST Without A Dependency Zoo ⭐⭐
-
-**Task:** Load MNIST into host float arrays, then into tensors.
-
-Questions:
-
-1. Where does the data come from, and how do you parse the IDX format into flat
-   `float` vectors without pulling in a heavy library?
-2. How do you normalize inputs, and why does normalization matter for
-   convergence?
-3. How do you batch: re-upload each batch to a fresh tensor, or reuse buffers?
-
-**Recommended first choice:** Parse the raw IDX files into `std::vector<float>`
-yourself. Keep IO out of the framework core; this is example code, not a comtam
-subsystem (see [`../AVOID.md`](../AVOID.md) on image/audio IO).
-
-## Assignment 8.2: Implement Softmax Cross-Entropy ⭐⭐⭐
-
-**Task:** Add a numerically stable cross-entropy loss over logits.
-
-Requirements:
-
-- subtract the row max before exponentiating (stability)
-- combine softmax and the log into one loss to avoid `log(0)`
-- return a scalar, and provide its backward rule
-
-Questions:
-
-1. Why does the naive `log(softmax(x))` blow up, and how does the max-subtraction
-   trick fix it?
-2. Can you express the backward as `softmax(logits) - one_hot(target)`, scaled by
-   batch size? Derive it and confirm with a numerical gradient check.
-
-**Test:** Numerical gradient check on a small logits/target pair, and a stability
-check with large-magnitude logits.
-
-## Assignment 8.3: Build And Train The MLP ⭐⭐⭐
-
-**Task:** Train a 2-layer MLP (`Linear -> relu -> Linear`) on MNIST.
-
-Steps:
-
-1. Assemble the model from Module 7 components.
-2. Write the epoch/batch loop with the standard training step.
-3. Track training loss and validation accuracy.
-4. Reach a believable accuracy (>90% is a reasonable first target for an MLP).
-
-Reporting rule (the module gate):
+The required report distinguishes:
 
 ```text
-compiled    -> built
-smoke ran   -> one batch ran forward+backward without crashing
-gate passed -> trained for real epochs and reached the accuracy target
+compiled    -> executable and tests built
+smoke ran   -> one batch completed forward/backward/update
+gate passed -> full configured run reached the accuracy and stability gates
 ```
 
-Do not claim the gate on a smoke run. A loss that prints is not a loss that
-converged.
+**Training gate:** reach at least 90% validation accuracy on MNIST with the
+documented configuration. Because GPU and floating-point ordering can vary,
+choose a deterministic seed and a threshold with reasonable margin rather than
+asserting one exact loss trajectory.
 
-**Why this assignment:** This is the capstone of correctness. Multiple layers,
-real gradients, real data, and many steps either compose into learning or they
-do not.
+## Assignment 8.4: Measure Sustained Lifetime Behavior ⭐⭐⭐
 
-## Assignment 8.4: Watch For Lifetime And Leak Bugs ⭐⭐
+**Task:** Run at least 10,000 training steps on one fixed small model and a fixed
+deterministic batch sequence, or the entire configured training run if longer,
+and separate deterministic ownership checks from OS memory observations. Record
+the seed, model shape, batch contents/order, optimizer configuration, and exact
+iteration count so the stress run is reproducible.
 
-**Task:** Run a full training run and watch memory and stability.
+Required evidence:
 
-Questions:
+- live autograd nodes/states return to the post-step baseline
+- previous batch tensors become unreachable
+- parameter identities remain constant
+- gradients are absent immediately after `zero_grad()`
+- command-buffer errors are checked every step
+- autorelease pools are drained at the documented boundary
 
-1. Does memory grow per iteration? If so, revisit the autorelease pool policy
-   from Assignment 3.5 (a per-iteration pool).
-2. Does the autograd graph from one step get freed before the next, or does it
-   pin every intermediate tensor forever?
-3. Are gradients zeroed each step, or are they silently accumulating across
-   steps?
+Also sample resident memory after a stated warm-up and report the observed band.
+Allocator and driver caching can make RSS non-zero or non-monotonic, so RSS is a
+diagnostic report rather than a pass condition; stable framework-owned counts are
+the deterministic gate.
 
-**Why this assignment:** Bugs that are invisible at one step become obvious over
-ten thousand. A training run is the best leak detector you have before Module 9.
+## Assignment 8.5: Record A Performance Baseline ⭐⭐
+
+**Task:** Record median batch time and epoch time after warm-up, including the
+synchronization boundary used for timing. This is a baseline for Module 13, not
+permission to optimize now.
+
+Report hardware, macOS version, build type, batch size, model shape, warm-up
+count, sample count, median, and a dispersion measure. A single timing sample is
+not evidence.
 
 ## Module 8 Checklist
 
-- [ ] 8.1 Load and normalize MNIST into tensors.
-- [ ] 8.2 Implement stable softmax cross-entropy with a gradient check.
-- [ ] 8.3 Train a 2-layer MLP to a believable accuracy.
-- [ ] 8.4 Run a full training pass and audit memory and graph lifetime.
+- [ ] 8.1 Validated IDX parser with offline fixtures.
+- [ ] 8.2 Explicit target contract and stable cross-entropy gradient.
+- [ ] 8.3 Full MLP run reaches the documented accuracy threshold.
+- [ ] 8.4 Repeated-step ownership and memory behavior are measured.
+- [ ] 8.5 Reproducible batch/epoch performance baseline is recorded.
 
 ## Exit Criteria
 
 You are ready for Module 9 when:
 
-1. A 2-layer MLP trains on MNIST and reaches its accuracy target across real
-   epochs, not a smoke run.
-2. Cross-entropy is numerically stable and gradient-checked.
-3. A full training run does not leak memory or accumulate stale gradients.
-4. You have at least one measured number (time per epoch, or per step) to make
-   Module 9's optimization decisions evidence-based.
+1. Cross-entropy matches a CPU oracle, passes its numerical gradient check, and
+   remains finite on large logits.
+2. A real multi-epoch MNIST run reaches at least 90% validation accuracy.
+3. The target representation and dtype boundary are explicit and tested.
+4. The sustained run releases per-step graphs and does not show unbounded
+   framework-owned state.
+5. The complete training configuration and performance baseline are recorded so
+   another run can reproduce the result.

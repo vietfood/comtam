@@ -1,99 +1,117 @@
-## Final Projects
+## Sequential Capstone Track
 
-Final projects prove the eager stack works end to end. Choose one only after
-Modules 1 through 7 are stable. Module 8 is strongly recommended first, because
-it shapes the training loop every project depends on.
+The capstones prove that the framework mechanisms taught by the modules compose
+into increasingly demanding real workloads. They are sequential rather than a
+menu: pass each prerequisite module and capstone gate before beginning the next
+stage.
 
-Each project ends with a gate, not a demo. Separate "compiled", "smoke ran", and
-"gate passed".
+Every capstone report separates:
 
-### Project A: MNIST MLP ⭐⭐
+```text
+compiled    -> target built
+smoke ran   -> one representative input completed
+gate passed -> correctness, gradient, convergence/lifetime target met
+```
 
-**Goal:** Train a 2-layer MLP on MNIST to >90% accuracy.
+Supporting work is attached to the capstone that earns it. Operator coverage is
+not an independent feature sprint, the autograd visualizer supports debugging,
+Python training repeats an already trusted native workload, and release
+rehearsal proves artifact consumption.
 
-**Requirements:**
+## Capstone 1: MLP Training
 
-- `nn::Linear` (Module 7)
-- `relu` and softmax cross-entropy (Modules 7 and 8)
-- `SGD` (Module 7)
-- MNIST loading (Module 8)
+**Prerequisite:** Module 8 for the native gate; Module 14 for the Python gate.
 
-**Steps:**
+**Goal:** train the Module 8 two-layer MNIST MLP to greater than 90% validation
+accuracy, first through the native API and later through the installed Python
+API.
 
-1. Assemble `Linear -> relu -> Linear`.
-2. Implement the epoch/batch training loop.
-3. Track loss and validation accuracy.
-4. Verify convergence across real epochs.
+**Required evidence:** fixed seed and configuration, stable cross-entropy
+oracle, multi-epoch accuracy, bounded live graph state, recorded batch/epoch
+timing, and reproducible checkpoint resume. The Python run must use public
+package symbols, preserve native parameter names and values, and exchange a
+checkpoint with C++.
 
-**Why this project:** The MNIST MLP is the smallest proof that forward ops,
-autograd, the optimizer, and data movement are coherent enough to train. It is
-mostly Module 8 made rigorous.
+**Supporting milestone:** build a tiny autograd visualizer after Module 6. For
+`sum(x*x + x)`, show node identity, saved inputs or metadata, topological order,
+incoming gradient contributions, leaf accumulation, and graph-state release.
+Enabling it must not change ownership or numerical results.
 
----
+**Gate:** both required API surfaces reach the accuracy target from a clean
+configuration, resume reproducibly, and exit without retained graph or native
+state. The Python portion becomes mandatory only after Module 14.
 
-### Project B: MNIST CNN ⭐⭐⭐
+## Capstone 2: CNN Training
 
-**Goal:** Train a small CNN on MNIST to >98% accuracy.
+**Prerequisites:** Module 16 and Capstone 1.
 
-**Requirements (builds on Project A):**
+**Goal:** train one fixed small CNN on MNIST to greater than 98% validation
+accuracy.
 
-- `View` padding and `shrink` working solidly (Module 2)
-- `nn::Conv2d` via im2col
-- `nn::MaxPool2d`
-- batched matmul (extend Module 5)
+Module 16 earns only the operations this architecture needs, such as padding,
+`conv2d`, pooling, activation functions, and any required batched operation. Add
+them one at a time with forward and gradient oracles; do not begin with a
+general convolution subsystem.
 
-This is significantly harder because Conv2d requires:
+**Gate:** deterministic multi-epoch convergence, complete supported-semantics
+rows for every new operation, bounded lifetime behavior, native/Python agreement,
+and a measured performance comparison identifying the dominant CNN cost.
 
-- padding for same-size convolutions
-- sliding-window extraction (im2col)
-- batched matmul for the actual convolution
-- shrink for output sizing
+## Capstone 3: GPT-2
 
-**Why this project:** CNNs force the view system to grow up. If padding, shrink,
-reshape, and batched matmul are shaky, this project exposes it fast. Expect to
-revisit Module 2 and add the `pad` op you previously deferred.
+**Prerequisites:** Module 17 and Capstone 2 for tiny training; Module 18 and the
+tiny-training gate for real-checkpoint inference.
 
----
+**Goal:** first prove transformer training semantics on a tiny GPT-2-shaped
+model, then load a real pretrained GPT-2 SafeTensors checkpoint and reproduce
+reference inference results.
 
-### Project C: Tiny Autograd Visualizer ⭐⭐
+### Tiny GPT-2 Training Gate
 
-**Goal:** Build a tool that prints or renders the dynamic autograd graph for a
-forward+backward pass.
+Train a deliberately small transformer to overfit a fixed tiny corpus. Compare
+forward intermediates, loss, selected parameter gradients, and update results
+against an independent reference implementation. This gate proves that the
+transformer operations and autograd rules compose; it does not claim practical
+GPT-2-scale training.
 
-Show:
+### Real GPT-2 Inference Gate
 
-- the grad nodes created during forward
-- the topological order used by backward
-- which tensors accumulate gradients from more than one path
-- saved tensors per node and when they are released
+Use Python SafeTensors tooling to validate, rename, transpose, and convert
+external weights as necessary, then load them through comtam's public Python
+API. Initially keep SafeTensors parsing, tokenization, model download, and
+checkpoint conversion outside the C++ tensor core.
 
-**Why this project:** comtam's autograd graph is built eagerly and is invisible by
-default. Making it visible is a strong test of whether you understand Module 6.
-If you can render the graph and explain every edge, you understand the backward
-pass.
+On fixed token IDs, compare selected intermediate activations, final logits,
+and deterministic generated token IDs with a pinned trusted reference. Record
+checkpoint identity, conversion rules, tolerances, memory use, and end-to-end
+latency.
 
----
+Native SafeTensors support or full-size GPT-2 training requires a separate
+measured product need. Neither is part of this capstone gate.
 
-### Project D: Operator Coverage Sprint ⭐⭐
+## Release Candidate Rehearsal
 
-**Goal:** Widen op coverage with full forward and gradient tests for each.
+**Prerequisite:** Module 15. Repeat after each capstone that broadens the claimed
+supported workload.
 
-Candidates: `exp`, `log`, `sqrt`, `sigmoid`, `tanh`, `max`/`min` reductions,
-`where`.
+Prove another clean machine or environment can consume native and Python
+artifacts alone. Install the release candidate, run documentation examples,
+load the currently supported model, execute its acceptance scenario, run
+compatibility fixtures, and archive benchmark/version reports with checksums.
 
-Rules:
+This rehearsal is a supporting product gate rather than a fourth model
+capstone. A successful Module 15 rehearsal covers the MLP-era product; CNN and
+GPT-2 support are not release claims until their own rehearsals pass.
 
-- Each new op needs a CPU-oracle forward test and a numerical gradient test
-  before it counts.
-- Add ops only with the dispatch and autograd patterns already established. If an
-  op does not fit, record that design pressure in the project notes instead of
-  special-casing it.
+## Scope Boundaries
 
-**Why this project:** Breadth with discipline. This project rewards the test
-infrastructure from Modules 4 and 6 and reveals where the op/dispatch/autograd
-patterns are still too rigid.
+The sequential track does not authorize broad API accumulation. Every new
+operation needs a real capstone call site, an independent forward oracle, a
+numerical gradient test when differentiable, scalar/empty/layout coverage, and
+Python coverage after Module 14.
 
----
-
-Good luck. The best way to learn is to implement, get stuck, then discover why
-the proper solution works better. Keep patches small and keep the gates honest.
+Multiple backends, distributed execution, lazy graphs, graph compilers, broad
+PyTorch/NumPy compatibility, tokenization, and model downloading remain outside
+the framework core. Add a second dtype only when its storage, transfer,
+validation, operator, persistence, and Python semantics are specified and
+tested together.
