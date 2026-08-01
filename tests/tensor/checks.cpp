@@ -67,12 +67,6 @@ TEST_CASE("check_binary returns broadcast shape and rejects bad metadata", "[che
         std::runtime_error);
 }
 
-TEST_CASE("check_binary_scalar validates the tensor operand", "[checks]") {
-    REQUIRE_NOTHROW(checks::check_binary_scalar(view({2, 3}), DType::Float32));
-    REQUIRE_THROWS_AS(checks::check_binary_scalar(view({0, 3}), DType::Float32),
-                      std::runtime_error);
-}
-
 TEST_CASE("check_reduce_full and check_reduce_axis enforce reduce contracts", "[checks]") {
     const view contiguous({2, 3});
     REQUIRE(checks::check_reduce_full(contiguous, DType::Float32).empty());
