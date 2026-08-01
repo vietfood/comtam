@@ -263,10 +263,9 @@ class tensor {
     static tensor mean(const tensor& a, view_int dim, bool keep_dim, core::context& ctx) {
         return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
             checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
-            auto scale = tensor(static_cast<scalar_t>(a.view_.shape[static_cast<size_int>(dim)]), ctx.device(), a.dtype());
-            return tensor::div(tensor::sum(a, dim, keep_dim, ctx),
-                               scale,
-                               ctx);
+            auto scale = tensor(static_cast<scalar_t>(a.view_.shape[static_cast<size_int>(dim)]),
+                                ctx.device(), a.dtype());
+            return tensor::div(tensor::sum(a, dim, keep_dim, ctx), scale, ctx);
         });
     }
 

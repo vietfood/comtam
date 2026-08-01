@@ -33,9 +33,14 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][ops][matmul][mlx][meta
         view_vector rhs_shape;
     };
 
+    // Contiguous operands select the tiled 16x16 path. Include non-square and
+    // tile-boundary shapes so partial tiles differ across M/N/K.
     const MatmulCase matmul_case[] = {
-        {{20, 20}, {20, 20}},
-        {{20, 1}, {1, 20}},
+        {{20, 20}, {20, 20}},     // square, multi-tile with remainder
+        {{20, 1}, {1, 20}},       // skinny K
+        {{17, 19}, {19, 33}},     // non-square tile boundary (2x3 output tiles)
+        {{5, 13}, {13, 7}},       // non-square, fits in one partial tile
+        {{31, 17}, {17, 9}},      // non-square, 2x1 output tiles, multi-phase K
     };
 
     for (const auto& shape : matmul_case) {
@@ -86,6 +91,9 @@ TEST_CASE("Forward compare vs MLX for matmul on non-contiguous inputs",
         {{12, 20}, {20, 16}, true, false},   // only A non-contiguous
         {{12, 20}, {20, 16}, false, true},   // only B non-contiguous
         {{12, 20}, {20, 16}, true, true},    // both non-contiguous
+        {{7, 11}, {11, 5}, true, false},     // smaller non-square, A transposed
+        {{17, 19}, {19, 33}, false, true},   // tile-boundary non-square, B transposed
+        {{9, 23}, {23, 13}, true, true},     // another non-square, both transposed
     };
 
     for (const auto& tc : cases) {

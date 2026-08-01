@@ -202,7 +202,12 @@ view_vector view::broadcast_shape(const view& lhs, const view& rhs) {
         if (a != b && a != 1 && b != 1) {
             COMTAM_THROW_ERROR(std::runtime_error, "Both shapes aren't compatible for broadcast");
         }
-        new_shape[static_cast<size_t>(i)] = std::max(a, b);
+
+        if (a == 1 || b == 1) {
+            new_shape[static_cast<size_t>(i)] = a * b;
+        } else { // a == b
+            new_shape[static_cast<size_t>(i)] = a;
+        }
     }
 
     return new_shape;

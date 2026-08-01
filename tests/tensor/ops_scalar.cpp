@@ -26,8 +26,7 @@ using comtam::tests::forward_compare::require_op_matches_oracle;
 using comtam::tests::forward_compare::ValueMode;
 namespace mlx_test = comtam::tests::mlx_oracle;
 
-TEST_CASE("Forward compare vs MLX for scalar binary ops",
-          "[forward][ops][scalar][mlx][metal]") {
+TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar][mlx][metal]") {
     core::context context;
     auto& device = context.device();
 
@@ -57,7 +56,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops",
 
             require_op_matches_oracle(
                 context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::add(a, scalar, context); },
+                [&]() { return tensor::add(a, tensor(scalar, device, a.dtype()), context); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_add);
@@ -66,7 +65,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops",
 
             require_op_matches_oracle(
                 context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::mul(a, scalar, context); },
+                [&]() { return tensor::mul(a, tensor(scalar, device, a.dtype()), context); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_multiply);
@@ -75,7 +74,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops",
 
             require_op_matches_oracle(
                 context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::sub(a, scalar, context); },
+                [&]() { return tensor::sub(a, tensor(scalar, device, a.dtype()), context); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_subtract);
@@ -84,7 +83,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops",
 
             require_op_matches_oracle(
                 context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::div(a, scalar, context); },
+                [&]() { return tensor::div(a, tensor(scalar, device, a.dtype()), context); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_divide);
@@ -102,7 +101,7 @@ TEST_CASE("Scalar binary ops reject mismatched dtype and divide-by-zero",
     const float data[] = {1.0F, 2.0F, 3.0F, 4.0F};
     tensor a(data, {2, 2}, device);
 
-    REQUIRE_THROWS_AS(tensor::add(a, 1, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::mul(a, 2UL, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::div(a, 0.0F, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(a, tensor(1, device, a.dtype()), context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mul(a, tensor(2UL, device, a.dtype()), context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(a, tensor(0.0, device, a.dtype()), context), std::runtime_error);
 }

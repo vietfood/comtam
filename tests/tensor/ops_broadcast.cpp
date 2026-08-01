@@ -79,3 +79,41 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
         }
     }
 }
+
+/*
+ * Broadcast must still work when an operand is a non-contiguous view. The binary
+ * kernel indexes through physical_offset, so a transposed left operand plus a
+ * broadcastable bias is a direct public proof of that path.
+ */
+TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inputs",
+          "[forward][ops][broadcast][mlx][metal]") {
+    core::context context;
+    auto& device = context.device();
+
+    // Logical: (4, 3) + (3,) -> (4, 3), with the (4, 3) operand coming from a
+    // transpose of a contiguous (3, 4) base.
+    const view_vector base_shape{3, 4};
+    const view_vector logical_shape{4, 3};
+    const view_vector bias_shape{3};
+
+    auto base_data = utils::generate_random_array<float>(numel_from_shape(base_shape), 1.0F, 2.0F);
+    auto bias_data = utils::generate_random_array<float>(numel_from_shape(bias_shape), 0.5F, 1.5F);
+
+    tensor a_base(base_data.data(), base_shape, device);
+    tensor a = a_base.transpose(0, 1);
+    tensor b(bias_data.data(), bias_shape, device);
+
+    REQUIRE(a.shape() == logical_shape);
+    // Contiguous (4, 3) would be strides (3, 1); transpose of (3, 4) is (1, 4).
+    REQUIRE(a.strides() == view_vector{1, 4});
+
+    const auto a_equiv = mlx_test::transpose_float32(base_data, base_shape, {1, 0});
+    const auto expected_shape = view::broadcast_shape(view(logical_shape), view(bias_shape));
+
+    require_op_matches_oracle(
+        context, a.dtype(), expected_shape, [&]() { return tensor::add(a, b, context); },
+        [&]() {
+            return mlx_test::binary_float32(a_equiv, logical_shape, bias_data, bias_shape, mlx_add);
+        },
+        ValueMode::Approximate);
+}

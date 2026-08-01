@@ -115,20 +115,59 @@ TEST_CASE("Tensor binary operations reject mismatched shapes", "[tensor][ops][ap
     REQUIRE_THROWS_AS(tensor::div(a, b, context), std::runtime_error);
 }
 
-TEST_CASE("Tensor ops reject rank-5 and zero-extent inputs", "[tensor][ops][api][metal]") {
+TEST_CASE("Tensor ops reject rank-5 inputs", "[tensor][ops][api][metal]") {
     core::context context;
     auto& device = context.device();
 
     tensor rank5({1, 1, 1, 1, 1}, device);
     tensor ok({2, 3}, device);
-    tensor mat_a({2, 3}, device);
-    tensor mat_b_bad_k({4, 5}, device);
 
     REQUIRE_THROWS_AS(tensor::neg(rank5, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::add(rank5, ok, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::sub(ok, rank5, context), std::runtime_error);
     REQUIRE_THROWS_AS(tensor::mean(rank5, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::matmul(mat_a, mat_b_bad_k, context), std::runtime_error);
+}
+
+TEST_CASE("Tensor ops reject zero-extent inputs before dispatch", "[tensor][ops][api][metal]") {
+    core::context context;
+    auto& device = context.device();
+
+    // allocate(0) is rejected, so build a zero-extent header over live storage.
+    // Op validators must reject this before allocating an output or submitting.
+    auto backing = std::make_shared<core::storage>(device.allocate(sizeof(float)));
+    tensor empty(backing, view({2, 0}), DType::Float32);
+    tensor ok(backing, view({2, 3}), DType::Float32);
+    tensor mat_empty_a(backing, view({2, 0}), DType::Float32);
+    tensor mat_empty_b(backing, view({0, 4}), DType::Float32);
+
+    REQUIRE(empty.shape() == view_vector({2, 0}));
+    REQUIRE(empty.numel() == 0);
+
+    REQUIRE_THROWS_AS(tensor::neg(empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(empty, ok, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sub(ok, empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mul(empty, ok, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(ok, empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mean(empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sum(empty, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(mat_empty_a, mat_empty_b, context), std::runtime_error);
+}
+
+TEST_CASE("tensor::matmul rejects non-2D ranks before dispatch",
+          "[tensor][ops][matmul][api][metal]") {
+    core::context context;
+    auto& device = context.device();
+
+    tensor rank1({3}, device);
+    tensor rank2_a({2, 3}, device);
+    tensor rank2_b({3, 4}, device);
+    tensor rank3({1, 2, 3}, device);
+
+    REQUIRE_THROWS_AS(tensor::matmul(rank1, rank2_b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(rank2_a, rank1, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(rank3, rank2_b, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(rank2_a, rank3, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::matmul(rank2_a, tensor({4, 5}, device), context), std::runtime_error);
 }
 
 TEST_CASE("Tensor from_vector rejects non-contiguous views", "[tensor][api][view][metal]") {
@@ -144,4 +183,32 @@ TEST_CASE("Tensor from_vector rejects non-contiguous views", "[tensor][api][view
                       std::runtime_error);
     require_forward_matches<float>(device, transposed, {3, 2}, {0.f, 3.f, 1.f, 4.f, 2.f, 5.f},
                                    ValueMode::Exact);
+}
+
+TEST_CASE("Tensor at and operator[] read logical elements", "[tensor][api][metal]") {
+    core::context context;
+    auto& device = context.device();
+
+    tensor t({2, 3}, device);
+    t.from_vector<float>({0.f, 1.f, 2.f, 3.f, 4.f, 5.f}, device);
+
+    SECTION("contiguous linear indexing") {
+        REQUIRE(t.at<float>(0) == 0.f);
+        REQUIRE(t.at<float>(5) == 5.f);
+        REQUIRE_THROWS_AS(t.at<float>(6), std::invalid_argument);
+    }
+
+    SECTION("non-contiguous views still use physical_offset") {
+        auto transposed = t.transpose(1, 0);  // logical: [[0,3],[1,4],[2,5]]
+        REQUIRE(transposed.at<float>(0) == 0.f);
+        REQUIRE(transposed.at<float>(1) == 3.f);
+    }
+
+    SECTION("shrinked views honor offset") {
+        auto inner = t.shrink({{0, 2}, {1, 3}});  // [[1,2],[4,5]]
+        REQUIRE(inner.at<float>(0) == 1.f);
+        REQUIRE(inner.at<float>(1) == 2.f);
+        REQUIRE(inner.at<float>(2) == 4.f);
+        REQUIRE(inner.at<float>(3) == 5.f);
+    }
 }

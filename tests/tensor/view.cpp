@@ -249,6 +249,9 @@ TEST_CASE("View broadcast shape", "[view][broadcast]") {
     }
 
     SECTION("compatible view return broadcast shape") {
+        REQUIRE(view::broadcast_shape(view({0}), view({1})) == view_vector({0}));
+        REQUIRE(view::broadcast_shape(view({1}), view({0})) == view_vector({0}));
+
         SECTION("(3, 1) and (2, 1, 4) => (2, 3, 4") {
             auto v = view({3, 1});
             auto y = view({2, 1, 4});
