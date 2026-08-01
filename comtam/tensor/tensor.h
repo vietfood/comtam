@@ -11,9 +11,7 @@
 
 #pragma once
 
-#include <bit>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -48,6 +46,23 @@ class tensor {
             device.copy<scalar_t>(data, static_cast<size_int>(view_.numel()), buffer);
 
             // then wrap to shared_ptr
+            storage_ = std::make_shared<core::storage>(std::move(buffer));
+        });
+    }
+
+    /**
+     * Initialize from a scalar
+     */
+    template <typename T>
+    tensor(T value, core::metal_device& device, DType dtype = DType::Float32)
+        : dtype_(dtype), view_({}), storage_(nullptr) {
+        COMTAM_DISPATCH_DTYPE(dtype_, [&] {
+            if constexpr (!std::is_same_v<T, scalar_t>) {
+                COMTAM_THROW_ERROR(std::runtime_error, "DType didn't match with input data");
+            }
+
+            auto buffer = device.allocate(sizeof(scalar_t));
+            device.copy<scalar_t>(value, buffer);
             storage_ = std::make_shared<core::storage>(std::move(buffer));
         });
     }
@@ -156,6 +171,23 @@ class tensor {
 
     // ----- Some common getters -----
 
+    /**
+     * Read one logical element by linear index.
+     * Uses View::physical_offset so non-contiguous views stay correct.
+     */
+    template <typename T>
+    T at(view_int i) const {
+        return COMTAM_DISPATCH_DTYPE(dtype_, [&] {
+            if constexpr (!std::is_same_v<T, scalar_t>) {
+                COMTAM_THROW_ERROR(std::runtime_error,
+                                   "Tensor::at: dtype did not match requested type");
+            }
+            COMTAM_CHECK_AND_THROW(storage_, std::runtime_error,
+                                   "Tensor::at: storage is not allocated");
+            return storage_->at<scalar_t>(view_.physical_offset(i));
+        });
+    }
+
     size_int numel() const { return static_cast<size_int>(view_.numel()); }
     size_int dim() const { return static_cast<size_int>(view_.dim()); }
     size_int offset() const { return static_cast<size_int>(view_.offset); }
@@ -192,7 +224,7 @@ class tensor {
     }
 
     static tensor sub(const tensor& a, const tensor& b, core::context& ctx) {
-        (void)checks::check_binary(a.view_, a.dtype_, b.view_, b.dtype_);
+        checks::check_binary(a.view_, a.dtype_, b.view_, b.dtype_);
         return add(a, tensor::neg(b, ctx), ctx);
     }
 
@@ -201,47 +233,8 @@ class tensor {
     }
 
     static tensor div(const tensor& a, const tensor& b, core::context& ctx) {
-        (void)checks::check_binary(a.view_, a.dtype_, b.view_, b.dtype_);
+        checks::check_binary(a.view_, a.dtype_, b.view_, b.dtype_);
         return tensor::mul(a, tensor::recip(b, ctx), ctx);
-    }
-
-    template <typename T>
-    static tensor add(const tensor& a, T scalar, core::context& ctx) {
-        return COMTAM_DISPATCH_DTYPE(a.dtype_, [&]() -> tensor {
-            if constexpr (std::is_same_v<T, scalar_t>) {
-                auto raw = std::bit_cast<uint32_t>(scalar);
-                return tensor::bop_scalar(a, raw, Op::ADD, ctx);
-            } else {
-                COMTAM_THROW_ERROR(std::runtime_error,
-                                   "dtype of scalar didn't match with input Tensor");
-            }
-        });
-    }
-
-    template <typename T>
-    static tensor mul(const tensor& a, T scalar, core::context& ctx) {
-        return COMTAM_DISPATCH_DTYPE(a.dtype_, [&]() -> tensor {
-            if constexpr (std::is_same_v<T, scalar_t>) {
-                auto raw = std::bit_cast<uint32_t>(scalar);
-                return tensor::bop_scalar(a, raw, Op::MUL, ctx);
-            } else {
-                COMTAM_THROW_ERROR(std::runtime_error,
-                                   "dtype of scalar didn't match with input Tensor");
-            }
-        });
-    }
-
-    template <typename T>
-    static tensor sub(const tensor& a, T scalar, core::context& ctx) {
-        return tensor::add<T>(a, -scalar, ctx);
-    }
-
-    template <typename T>
-    static tensor div(const tensor& a, T scalar, core::context& ctx) {
-        if (scalar == T(0)) {
-            COMTAM_THROW_ERROR(std::runtime_error, "scalar division cannot handle zero");
-        }
-        return tensor::mul<T>(a, static_cast<T>(1.0 / scalar), ctx);
     }
 
     // ----- Unary operation -----
@@ -269,16 +262,17 @@ class tensor {
 
     static tensor mean(const tensor& a, view_int dim, bool keep_dim, core::context& ctx) {
         return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
-            (void)checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
+            checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
+            auto scale = tensor(static_cast<scalar_t>(a.view_.shape[static_cast<size_int>(dim)]), ctx.device(), a.dtype());
             return tensor::div(tensor::sum(a, dim, keep_dim, ctx),
-                               static_cast<scalar_t>(a.view_.shape[static_cast<size_int>(dim)]),
+                               scale,
                                ctx);
         });
     }
 
     static tensor min(const tensor& a, view_int dim, bool keep_dim, core::context& ctx) {
         // min({a, b, ...}) = -max({-a, -b, ...})
-        (void)checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
+        checks::check_reduce_axis(a.view_, a.dtype_, dim, keep_dim);
         return neg(max(neg(a, ctx), dim, keep_dim, ctx), ctx);
     }
 
@@ -290,8 +284,9 @@ class tensor {
 
     static tensor mean(const tensor& a, core::context& ctx) {
         return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
-            (void)checks::check_reduce_full(a.view_, a.dtype_);
-            return tensor::div(tensor::sum(a, ctx), static_cast<scalar_t>(a.numel()), ctx);
+            checks::check_reduce_full(a.view_, a.dtype_);
+            auto scale = tensor(static_cast<scalar_t>(a.numel()), ctx.device(), a.dtype());
+            return tensor::div(tensor::sum(a, ctx), scale, ctx);
         });
     }
 
@@ -300,7 +295,7 @@ class tensor {
     }
 
     static tensor min(const tensor& a, core::context& ctx) {
-        (void)checks::check_reduce_full(a.view_, a.dtype_);
+        checks::check_reduce_full(a.view_, a.dtype_);
         return neg(max(neg(a, ctx), ctx), ctx);
     }
 
@@ -310,14 +305,6 @@ class tensor {
     static tensor uop(const tensor& a, const Op& op, core::context& ctx);
     static tensor rop(const tensor& a, const Op& op, core::context& ctx, view_int dim = -1,
                       bool keep_dim = false, const OpVariant& variant = OpVariant::FULL);
-    /**
-     * This is a simple hack to avoid using template
-     * for scalar operations, we pass raw byte instead
-     * then Metal kernel will cast it back later
-     */
-    static tensor bop_scalar(const tensor& a, uint32_t raw, const Op& op, core::context& ctx);
-
-    static view_vector broadcast_shape(const view& lhs, const view& rhs);
 
     // --- Private variables ---
     DType dtype_;

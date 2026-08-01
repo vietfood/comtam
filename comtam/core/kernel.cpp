@@ -44,8 +44,8 @@ kernel_library::kernel_library(MTL::Device* device, fs::path kernel_dir) : devic
 
 // We only compile source only when we need it
 // The name here is the "function" name in kernel source
-MTL::ComputePipelineState* kernel_library::get(const kernel_desc& kernel, bool is_scalar) {
-    std::string name = kernel.name() + (is_scalar ? "_scalar" : "");
+MTL::ComputePipelineState* kernel_library::get(const kernel_desc& kernel) {
+    std::string name = kernel.name();
 
     if (auto it = pipeline_cache_.find(name); it != pipeline_cache_.end()) {
         return it->second.get();

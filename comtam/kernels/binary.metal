@@ -25,36 +25,12 @@ kernel void add(
     dst[id] = src0[src0_pid] + src1[src1_pid];
 }
 
-template<typename T>
-kernel void add_scalar(
-    device const T* src0,
-    device T* dst,
-    constant T& scalar,
-    constant ViewInfo& view_src0,
-    uint id [[thread_position_in_grid]]
-) {
-    if (id >= view_src0.N) {
-        return;
-    }
-    int64_t src0_pid = physical_offset(id, view_src0);
-    dst[id] = src0[src0_pid] + scalar;
-}
-
 template [[ host_name("add_fp32") ]]
 kernel void add(
     device const float*,
     device const float*,
     device float*,
     constant ViewInfo&,
-    constant ViewInfo&,
-    uint
-);
-
-template [[ host_name("add_fp32_scalar") ]]
-kernel void add_scalar(
-    device const float*,
-    device float*,
-    constant float& scalar,
     constant ViewInfo&,
     uint
 );
@@ -76,35 +52,12 @@ kernel void mul(
     dst[id] = src0[src0_pid] * src1[src1_pid];
 }
 
-template <typename T>
-kernel void mul_scalar(
-    device const T* src0,
-    device T* dst,
-    constant T& scalar,
-    constant ViewInfo& view_src0,
-    uint id [[thread_position_in_grid]]) {
-    if (id >= view_src0.N) {
-        return;
-    }
-    int64_t src0_pid = physical_offset(id, view_src0);
-    dst[id] = src0[src0_pid] * scalar;
-}
-
 template [[ host_name("mul_fp32") ]]
 kernel void mul(
     device const float*,
     device const float*,
     device float*,
     constant ViewInfo&,
-    constant ViewInfo&,
-    uint
-);
-
-template [[ host_name("mul_fp32_scalar") ]]
-kernel void mul_scalar(
-    device const float*,
-    device float*,
-    constant float&,
     constant ViewInfo&,
     uint
 );

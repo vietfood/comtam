@@ -63,10 +63,6 @@ COMTAM_INLINE view_vector check_binary(const view& a, DType a_dtype, const view&
     return view::broadcast_shape(a, b);
 }
 
-COMTAM_INLINE void check_binary_scalar(const view& v, DType dtype) {
-    check_unary(v, dtype);
-}
-
 COMTAM_INLINE view_vector check_reduce_full(const view& v, DType dtype) {
     check_tensor_gpu_ready(v, dtype);
     COMTAM_CHECK_AND_THROW(v.is_contiguous(), std::runtime_error,

@@ -53,6 +53,14 @@ class metal_device {
     }
 
     template <typename T>
+    void copy(T value, storage& storage) {
+        COMTAM_CHECK_AND_THROW(sizeof(T) == storage.size(), std::runtime_error,
+                               "Data size does not match storage size");
+        std::memcpy(storage.ptr()->contents(), &value, sizeof(T));
+        storage.ptr()->didModifyRange(NS::Range(0, sizeof(T)));
+    }
+
+    template <typename T>
     void copy(storage& storage, T* data, size_int count) {
         const size_int bytes = count * sizeof(T);
         COMTAM_CHECK_AND_THROW(bytes == storage.size(), std::runtime_error,

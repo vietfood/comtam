@@ -130,41 +130,16 @@ struct extra_desc {
  * - a kernel  (Op + DType)
  * - two input info (a, b)
  * - an output info (out)
- * - an extra info (axis, scalar)
+ * - an extra info (axis)
+ *
+ * Scalars are rank-0 tensors and go through the same path via broadcasting.
  */
-struct tensor_command_desc {
+struct command_desc {
     kernel_desc kernel;
     tensor_input_desc a;
     tensor_input_desc b;
     storage* out_buffer;
     extra_desc extra;
-};
-
-/*
- * A scalar command will have:
- * - a kernel  (Op + DType)
- * - a tensor input info (a)
- * - a scalar value
- * - an output info (out)
- */
-struct scalar_command_desc {
-    kernel_desc kernel;
-    tensor_input_desc tensor;
-    uint32_t scalar;  // scalar value
-    storage* out_buffer;
-};
-
-struct command_desc : std::variant<tensor_command_desc, scalar_command_desc> {
-    using base_type = std::variant<tensor_command_desc, scalar_command_desc>;
-    using base_type::base_type;
-
-    bool is_scalar() const { return std::holds_alternative<scalar_command_desc>(*this); }
-    bool is_tensor() const { return std::holds_alternative<tensor_command_desc>(*this); }
-
-    const tensor_command_desc& as_tensor() const { return std::get<tensor_command_desc>(*this); }
-    tensor_command_desc& as_tensor() { return std::get<tensor_command_desc>(*this); }
-    const scalar_command_desc& as_scalar() const { return std::get<scalar_command_desc>(*this); }
-    scalar_command_desc& as_scalar() { return std::get<scalar_command_desc>(*this); }
 };
 
 }  // namespace comtam::core

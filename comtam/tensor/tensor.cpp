@@ -11,8 +11,6 @@
 
 #include "comtam/tensor/tensor.h"
 
-#include <bit>
-
 #include "comtam/core/command.h"
 #include "comtam/core/context.h"
 #include "comtam/macros/log.h"
@@ -21,10 +19,6 @@
 #include "comtam/utils/debug.h"
 
 using namespace comtam;
-
-view_vector tensor::broadcast_shape(const view& lhs, const view& rhs) {
-    return view::broadcast_shape(lhs, rhs);
-}
 
 // ----- Binary operation -----
 tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context& ctx) {
@@ -46,49 +40,20 @@ tensor tensor::bop(const tensor& a, const tensor& b, const Op& op, core::context
 
     tensor out(final_shape, device, a.dtype_);
 
-    core::tensor_command_desc cmd = {.kernel = {.op = op, .dtype = a.dtype_},
+    core::command_desc cmd = {.kernel = {.op = op, .dtype = a.dtype_},
                                      .a = {.storage = a_expand.storage_.get(),
                                            .view = core::view_desc::from_view(a_expand.view_)},
                                      .b = {.storage = b_expand.storage_.get(),
                                            .view = core::view_desc::from_view(b_expand.view_)},
                                      .out_buffer = out.storage_.get()};
 
+    device.submit_bop(cmd, kernels);
+
     COMTAM_LOG_DEBUG("binop ViewInfo:\na: {}\nb: {}\nout_bytes={} (output written linearly)\n",
                      utils::format_view_info(cmd.a.view), utils::format_view_info(cmd.b.view),
                      out.storage_->size());
 
-    device.submit_bop(cmd, kernels);
-
     return out;
-}
-
-tensor tensor::bop_scalar(const tensor& a, uint32_t raw, const Op& op, core::context& ctx) {
-    auto& device = ctx.device();
-    auto& kernels = ctx.kernels();
-
-    checks::check_binary_scalar(a.view_, a.dtype_);
-
-    return COMTAM_DISPATCH_DTYPE(a.dtype_, [&] {
-        auto scalar = std::bit_cast<scalar_t>(raw);
-
-        COMTAM_LOG_DEBUG("binop_scalar {}_{}:\na={}\nb={}\n", core::op2kernel(op),
-                         core::dtype2kernel(a.dtype_), utils::format_view(a.view_), scalar);
-
-        tensor out(a.view_.shape, device, a.dtype_);
-
-        core::scalar_command_desc cmd = {
-            .kernel = {.op = op, .dtype = a.dtype_},
-            .tensor = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
-            .scalar = raw,
-            .out_buffer = out.storage_.get()};
-
-        COMTAM_LOG_DEBUG("binop_scalar ViewInfo:\na: {}\nout_bytes={} (output written linearly)\n",
-                         utils::format_view_info(cmd.tensor.view), out.storage_->size());
-
-        device.submit_bop(cmd, kernels);
-
-        return out;
-    });
 }
 
 // ----- Unary operation ---
@@ -104,7 +69,7 @@ tensor tensor::uop(const tensor& a, const Op& op, core::context& ctx) {
 
     tensor out(a.view_.shape, device, a.dtype_);
 
-    core::tensor_command_desc cmd = {
+    core::command_desc cmd = {
         .kernel = {.op = op, .dtype = a.dtype_},
         .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
         .b = {},  // default
@@ -136,7 +101,7 @@ tensor tensor::matmul(const tensor& a, const tensor& b, core::context& ctx) {
                          (b.view_.is_contiguous() && b.offset() == 0);
     OpVariant variant = is_contiguous ? OpVariant::CONTIGUOUS : OpVariant::STRIDED;
 
-    core::tensor_command_desc cmd = {
+    core::command_desc cmd = {
         .kernel = {.op = Op::MATMUL, .dtype = a.dtype_, .variant = variant},
         .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
         .b = {.storage = b.storage_.get(), .view = core::view_desc::from_view(b.view_)},
@@ -169,7 +134,7 @@ tensor tensor::rop(const tensor& a, const Op& op, core::context& ctx, view_int d
 
     tensor out(final_shape, device, a.dtype_);
 
-    core::tensor_command_desc cmd = {
+    core::command_desc cmd = {
         .kernel = {.op = op, .dtype = a.dtype_, .variant = variant},
         .a = {.storage = a.storage_.get(), .view = core::view_desc::from_view(a.view_)},
         .b = {},
