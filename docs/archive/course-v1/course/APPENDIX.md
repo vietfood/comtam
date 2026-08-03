@@ -22,26 +22,26 @@ persistence, or Python do not belong here until they exist.
 
 Supporting project docs:
 
-- [`../ARCHITECTURE.md`](../ARCHITECTURE.md) - architecture that currently exists
-- [`../note/METAL_USAGE.md`](../note/METAL_USAGE.md) - Metal ownership and errors
-- [`../note/AVOID.md`](../note/AVOID.md) - premature abstractions to avoid
-- [`../note/MLX_C_ORACLE.md`](../note/MLX_C_ORACLE.md) - test-only MLX C usage
+- [`../ARCHITECTURE.md`](../../../ARCHITECTURE.md) - architecture that currently exists
+- [`../note/METAL_USAGE.md`](../../../note/METAL_USAGE.md) - Metal ownership and errors
+- [`../note/AVOID.md`](../../../note/AVOID.md) - premature abstractions to avoid
+- [`../note/MLX_C_ORACLE.md`](../../../note/MLX_C_ORACLE.md) - test-only MLX C usage
 
 ## Appendix B: Reference Frameworks
 
 Use references after your own attempt, when you have a concrete question.
-Study guides for each live in [`../refs/`](../refs/).
+Study guides for each live in [`../refs/`](../../../refs/).
 
-- `refs/magnetron` ([`../refs/MAGENETRON.md`](../refs/MAGENETRON.md)) is the
+- `refs/magnetron` ([`../refs/MAGENETRON.md`](../../../refs/MAGENETRON.md)) is the
   closest eager-runtime reference for tensor identity, autograd, state
   dictionaries/snapshots, Python bindings, packaging, and the cost of a much
   broader backend/dtype/operator scope.
-- `refs/mlx` ([`../refs/MLX.md`](../refs/MLX.md), with
-  [`MLX_KERNELS.md`](../refs/MLX_KERNELS.md) and
-  [`MLX_REDUCTION.md`](../refs/MLX_REDUCTION.md)) is the production Apple GPU
+- `refs/mlx` ([`../refs/MLX.md`](../../../refs/MLX.md), with
+  [`MLX_KERNELS.md`](../../../refs/MLX_KERNELS.md) and
+  [`MLX_REDUCTION.md`](../../../refs/MLX_REDUCTION.md)) is the production Apple GPU
   kernel reference: kernel organization, naming, and reduction design.
-- `refs/luminal` ([`../refs/LUMINAL.md`](../refs/LUMINAL.md), with
-  [`LUMINAL_METAL.md`](../refs/LUMINAL_METAL.md)) is the compiler-first
+- `refs/luminal` ([`../refs/LUMINAL.md`](../../../refs/LUMINAL.md), with
+  [`LUMINAL_METAL.md`](../../../refs/LUMINAL_METAL.md)) is the compiler-first
   counterpoint. Read it for the RISC-style primitive op set behind Module 5A's
   semantic-surface audit and for its production Metal backend, not as an architecture
   template - its lazy graph, e-graph search, and symbolic shapes are exactly
@@ -136,7 +136,7 @@ public movement operation and does not change the forward view rule above.
 
 ## Appendix E: Gate Evidence Template
 
-Use this block in each `docs/solution/MODULE_N.md` grading section:
+Use this block in each `docs/archive/course-v1/solution/MODULE_N.md` grading section:
 
 ```text
 configured     -> exact CMake/Python configuration

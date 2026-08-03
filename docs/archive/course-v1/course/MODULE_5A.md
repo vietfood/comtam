@@ -50,7 +50,7 @@ overloading, or performance promotion based only on intuition.
 
 **Completion evidence:** a design inventory, independent forward-oracle tests,
 validation tests, documented numerical cases and tolerances, a clean build, and
-the exact commands recorded in `docs/solution/MODULE_5A.md`.
+the exact commands recorded in `docs/archive/course-v1/solution/MODULE_5A.md`.
 
 ## Four Different Surfaces
 
@@ -125,7 +125,7 @@ dispatch case. Record that tradeoff in the solution note. Do not claim that
 `neg` makes the primitive count smaller.
 
 This intentionally differs from Luminal, which composes negation from multiply
-inside a lazy graph ([`../refs/LUMINAL.md`](../refs/LUMINAL.md)). Luminal can
+inside a lazy graph ([`../refs/LUMINAL.md`](../../../refs/LUMINAL.md)). Luminal can
 fold constants and fuse the graph before execution; eager comtam pays each
 constant upload and launch directly. Borrow the small-surface reasoning, not
 the exact primitive list.

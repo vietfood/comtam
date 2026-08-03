@@ -41,7 +41,7 @@ add(a, b)
 
 No lazy graph. No scheduler. No fusion. The op runs now. The discipline that
 matters is the Magnetron-inspired uniform path from
-[`../ARCHITECTURE.md`](../ARCHITECTURE.md):
+[`../ARCHITECTURE.md`](../../../ARCHITECTURE.md):
 
 ```text
 high-level op -> uniform Command -> Device::submit
@@ -186,7 +186,7 @@ Questions:
 
 **Recommended first choice:** Replace the map with a small `switch` that returns
 the kernel name, and make the default case a hard error. With four ops, a map is
-more machinery than the problem needs (see [`../note/AVOID.md`](../note/AVOID.md)). An
+more machinery than the problem needs (see [`../note/AVOID.md`](../../../note/AVOID.md)). An
 exhaustive switch turns "forgot to handle the new op" into a build failure.
 
 ## Assignment 3.5: One Autorelease Pool Per Launch Boundary ⭐⭐
@@ -195,7 +195,7 @@ exhaustive switch turns "forgot to handle the new op" into a build failure.
 
 Background: command buffers and encoders are autoreleased. Without a pool, a
 training loop that submits thousands of commands can accumulate them. See
-[`../note/METAL_USAGE.md`](../note/METAL_USAGE.md) on autorelease pools.
+[`../note/METAL_USAGE.md`](../../../note/METAL_USAGE.md) on autorelease pools.
 
 Questions:
 

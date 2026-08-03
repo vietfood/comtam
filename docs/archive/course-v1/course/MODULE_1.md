@@ -28,7 +28,7 @@ is to prove the invariants that Module 2 views will depend on.
 
 ## Core Rule
 
-Keep this rule from [`../ARCHITECTURE.md`](../ARCHITECTURE.md):
+Keep this rule from [`../ARCHITECTURE.md`](../../../ARCHITECTURE.md):
 
 ```text
 one Storage owns one buffer
@@ -38,7 +38,7 @@ views do not allocate
 
 That is deliberately smaller than ATen's storage system. Do not add custom
 deleters, backend registries, allocator caches, or dtype-aware storage unless a
-failing test forces the design to grow. See [`../note/AVOID.md`](../note/AVOID.md).
+failing test forces the design to grow. See [`../note/AVOID.md`](../../../note/AVOID.md).
 
 ## Mental Model
 

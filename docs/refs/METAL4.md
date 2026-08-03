@@ -352,7 +352,7 @@ only tuning parameter exposed in this sample.
 ## What's Actually Relevant To `comtam`, And When
 
 `comtam` is at Module 4 passed, Module 5 in progress
-(`docs/course/INDEX.md`) - broadcasting, reductions, and a first matmul.
+(`docs/archive/course-v1/course/INDEX.md`) - broadcasting, reductions, and a first matmul.
 Read this section as a grounded answer to "should any of this land in
 `comtam` now," not just a feature list.
 
@@ -362,7 +362,7 @@ Read this section as a grounded answer to "should any of this land in
   `MTL::CommandQueue` to `MTL4::CommandQueue` is a Module 13 performance move at
   the earliest. It attacks per-dispatch CPU overhead (argument tables,
   reusable allocators, async commit), which is exactly what
-  `docs/course/INDEX.md`'s "no optimization before a failing performance
+  `docs/archive/course-v1/course/INDEX.md`'s "no optimization before a failing performance
   measurement" rule and `docs/note/AVOID.md` item 7 guard against right now.
   `comtam`'s current synchronous, per-op encoder/command-buffer path
   (`comtam/core/device.cpp`) is the correct amount of machinery for a

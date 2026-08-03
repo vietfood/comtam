@@ -4,6 +4,8 @@ This document describes the architecture implemented by the current source. It
 is living guidance: when a deliberate, tested source design supersedes an older
 course choice, update this document and the active module contract together.
 
+The accepted but not yet implemented `tensor_impl`, tensor-bound runtime, default runtime, and reverse-mode ownership design lives in [`AUTOGRAD_DESIGN.md`](AUTOGRAD_DESIGN.md). This document continues to describe the current explicit-context implementation until the corresponding source and tests land.
+
 `comtam` is a tiny eager-mode deep-learning framework in C++20 for Apple
 devices. It is currently Metal-only, float32-only, single-device, and
 synchronous.
@@ -399,9 +401,7 @@ The following remain intentionally deferred:
 - asynchronous scheduling, allocator caches, fusion, and lazy graphs;
 - Python bindings, serialization, `nn` modules, and optimizers.
 
-The immediate next architecture step is Module 6: introduce reverse-mode
-autograd over the frozen semantic surface without allowing internal broadcast
-aliases or constant-only branches to become tape nodes.
+The immediate next architecture step is the [`Autograd Track`](course/autograd/INDEX.md): implement the accepted design over the frozen semantic surface without allowing internal broadcast aliases or constant-only branches to become graph nodes.
 
 ## Evolution Rule
 
