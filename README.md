@@ -57,10 +57,7 @@ Oracles and epsilon are lunch.
 - **Shared Metal buffers** first; one obvious owner per Metal object
 - Correctness before speed. Speed only after a measurement that fails in public
 
-Design notes under [`docs/`](docs/):
-[`ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`note/AVOID.md`](docs/note/AVOID.md),
-[`note/METAL_USAGE.md`](docs/note/METAL_USAGE.md).
+Design notes under [`docs/`](docs/): [`ARCHITECTURE.md`](docs/ARCHITECTURE.md), [`AUTOGRAD_DESIGN.md`](docs/AUTOGRAD_DESIGN.md), [`note/AVOID.md`](docs/note/AVOID.md), [`note/METAL_USAGE.md`](docs/note/METAL_USAGE.md).
 
 References in `refs/`: steal the arc from Magnetron, the restraint from
 micrograd, and the cautionary tales from legrad (my failed previous attempt LOL).
@@ -87,35 +84,11 @@ ctest --test-dir build --output-on-failure
 
 ## Status
 
-**Phase I — Framework Core** (Modules 1–9): make the runtime honest enough to
-train without lying to yourself.
+The eager runtime foundations through broadcasting, reductions, matmul, and primitive-surface consolidation are complete. Their original module-oriented course and grading history are frozen under [`docs/archive/course-v1/`](docs/archive/course-v1/README.md).
 
-| Module | Topic | Status |
-| --- | --- | --- |
-| 1 | Storage + tensor metadata | Passed |
-| 2 | Views, strides, offsets | Passed |
-| 3 | Eager Metal dispatch | Passed |
-| 4 | Forward correctness vs oracle | Passed |
-| **5** | **Broadcast / reduce / matmul** | **In progress** — gate still open |
-| 5A | Primitive surface / composition / numerics | Blocked until Module 5 passes |
-| 6–9 | Autograd → nn/SGD → MNIST → harden | Not started (wait for Module 5A) |
+The active course now uses deep problem-driven chapters. The current track is [`Autograd`](docs/course/autograd/INDEX.md), beginning with [`Runtime Ownership Before Autograd`](docs/course/autograd/01_RUNTIME_OWNERSHIP.md) and [`Tensor Identity And tensor_impl`](docs/course/autograd/02_TENSOR_IDENTITY.md).
 
-Current plate: Module 5. Binary ops and contiguous matmul already chew on Metal;
-broadcast edges, reduction completeness, and the full layout/validation matrix
-are still in the wok. Details and grading live in
-[`docs/solution/MODULE_5.md`](docs/solution/MODULE_5.md) and the progress table in
-[`docs/course/INDEX.md`](docs/course/INDEX.md). After that gate, mandatory
-[`docs/course/MODULE_5A.md`](docs/course/MODULE_5A.md) consolidates the semantic
-primitive surface before autograd begins.
-
-**Phase II — Production Track** (Modules 10–15): async/lifetime, persistence,
-measurement-driven perf, then a narrow Python API — earned after the C++ core
-stops being a science fair project. Not assumed. Not "we'll bind it later and
-cry."
-
-**Phase III — Sequential Capstones** (Modules 16–18): CNN operator foundations
-and training, transformer foundations and tiny-model training, then verified
-real GPT-2 inference through the public Python API.
+Future subjects such as neural-network modules, optimizers, sustained training, persistence, performance, and Python bindings will become their own multi-chapter tracks when the implementation reaches them.
 
 This is a learning kitchen that still wants to ship edible food. Bring an
 appetite for ownership. Leave the seventeen sauces at the door.
