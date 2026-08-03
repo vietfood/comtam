@@ -23,7 +23,7 @@
 namespace comtam::core {
 class storage {
    public:
-    storage(size_int bytes, MTL::Device* device);
+    explicit storage(size_int bytes, MTL::Device* device);
     ~storage() = default;
 
     // move constructor

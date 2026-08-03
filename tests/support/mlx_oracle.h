@@ -147,8 +147,7 @@ inline std::vector<float> to_vector_float32(const Array& array, const Stream& st
     return {data, data + size};
 }
 
-inline std::vector<float> unary_float32(const std::vector<float>& lhs,
-                                        const view_vector& shape,
+inline std::vector<float> unary_float32(const std::vector<float>& lhs, const view_vector& shape,
                                         UnaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, shape);
@@ -159,9 +158,9 @@ inline std::vector<float> unary_float32(const std::vector<float>& lhs,
 }
 
 inline std::vector<float> binary_float32(const std::vector<float>& lhs,
-                                                   const view_vector& lhs_shape,
-                                                   const std::vector<float>& rhs,
-                                                   const view_vector& rhs_shape, BinaryOp op) {
+                                         const view_vector& lhs_shape,
+                                         const std::vector<float>& rhs,
+                                         const view_vector& rhs_shape, BinaryOp op) {
     Stream stream;
     auto a = Array::from_float32(lhs, lhs_shape);
     auto b = Array::from_float32(rhs, rhs_shape);
@@ -267,8 +266,9 @@ inline std::vector<float> mean_float32(const std::vector<float>& data, const vie
     return to_vector_float32(result, stream);
 }
 
-inline std::vector<float> mean_axis_float32(const std::vector<float>& data, const view_vector& shape,
-                                            int axis, bool keepdims = false) {
+inline std::vector<float> mean_axis_float32(const std::vector<float>& data,
+                                            const view_vector& shape, int axis,
+                                            bool keepdims = false) {
     Stream stream;
     auto input = Array::from_float32(data, shape);
     Array result;

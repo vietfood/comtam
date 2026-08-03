@@ -13,7 +13,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
 
-#include "comtam/core/context.h"
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "tests/support/forward_compare.h"
@@ -39,15 +38,8 @@ view_vector axis_out_shape(const view_vector& shape, view_int axis, bool keep_di
 }
 
 TEST_CASE("Forward compare vs MLX for full reductions", "[forward][ops][reduce][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const view_vector shapes[] = {
-        {4, 5},
-        {3, 4},
-        {2, 3, 4},
-        {8},
-        {},
+        {4, 5}, {3, 4}, {2, 3, 4}, {8}, {},
     };
 
     for (const auto& shape : shapes) {
@@ -55,38 +47,36 @@ TEST_CASE("Forward compare vs MLX for full reductions", "[forward][ops][reduce][
 
         const auto n = numel_from_shape(shape);
         auto data = utils::generate_random_array<float>(n, 1.0F, 2.0F);
-        tensor a(data.data(), shape, device);
+        tensor a(data.data(), shape);
 
         require_op_matches_oracle(
-            context, a.dtype(), {}, [&]() { return tensor::sum(a, context); },
+            a.dtype(), {}, [&]() { return tensor::sum(a); },
             [&]() { return mlx_test::sum_float32(data, shape, false); }, ValueMode::Approximate,
             kReduceEpsilon);
 
         require_op_matches_oracle(
-            context, a.dtype(), {}, [&]() { return tensor::mean(a, context); },
+            a.dtype(), {}, [&]() { return tensor::mean(a); },
             [&]() { return mlx_test::mean_float32(data, shape, false); }, ValueMode::Approximate,
             kReduceEpsilon);
 
         require_op_matches_oracle(
-            context, a.dtype(), {}, [&]() { return tensor::max(a, context); },
+            a.dtype(), {}, [&]() { return tensor::max(a); },
             [&]() { return mlx_test::max_float32(data, shape, false); }, ValueMode::Approximate,
             kReduceEpsilon);
 
         require_op_matches_oracle(
-            context, a.dtype(), {}, [&]() { return tensor::min(a, context); },
+            a.dtype(), {}, [&]() { return tensor::min(a); },
             [&]() { return mlx_test::min_float32(data, shape, false); }, ValueMode::Approximate,
             kReduceEpsilon);
     }
 }
 
-TEST_CASE("Forward compare vs MLX for axis: sum max min mean", "[forward][ops][reduce][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
+TEST_CASE("Forward compare vs MLX for axis: sum max min mean",
+          "[forward][ops][reduce][mlx][metal]") {
     const view_vector shape{4, 5};
     const auto n = numel_from_shape(shape);
     auto data = utils::generate_random_array<float>(n, 1.0F, 2.0F);
-    tensor a(data.data(), shape, device);
+    tensor a(data.data(), shape);
 
     for (view_int axis : {0, 1}) {
         for (bool keep_dim : {false, true}) {
@@ -96,8 +86,7 @@ TEST_CASE("Forward compare vs MLX for axis: sum max min mean", "[forward][ops][r
             const auto expected_shape = axis_out_shape(shape, axis, keep_dim);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape,
-                [&]() { return tensor::sum(a, axis, keep_dim, context); },
+                a.dtype(), expected_shape, [&]() { return tensor::sum(a, axis, keep_dim); },
                 [&]() {
                     return mlx_test::sum_axis_float32(data, shape, static_cast<int>(axis),
                                                       keep_dim);
@@ -105,17 +94,15 @@ TEST_CASE("Forward compare vs MLX for axis: sum max min mean", "[forward][ops][r
                 ValueMode::Approximate, kReduceEpsilon);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape,
-                [&]() { return tensor::mean(a, axis, keep_dim, context); },
+                a.dtype(), expected_shape, [&]() { return tensor::mean(a, axis, keep_dim); },
                 [&]() {
                     return mlx_test::mean_axis_float32(data, shape, static_cast<int>(axis),
-                                                      keep_dim);
+                                                       keep_dim);
                 },
                 ValueMode::Approximate, kReduceEpsilon);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape,
-                [&]() { return tensor::max(a, axis, keep_dim, context); },
+                a.dtype(), expected_shape, [&]() { return tensor::max(a, axis, keep_dim); },
                 [&]() {
                     return mlx_test::max_axis_float32(data, shape, static_cast<int>(axis),
                                                       keep_dim);
@@ -123,8 +110,7 @@ TEST_CASE("Forward compare vs MLX for axis: sum max min mean", "[forward][ops][r
                 ValueMode::Approximate, kReduceEpsilon);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape,
-                [&]() { return tensor::min(a, axis, keep_dim, context); },
+                a.dtype(), expected_shape, [&]() { return tensor::min(a, axis, keep_dim); },
                 [&]() {
                     return mlx_test::min_axis_float32(data, shape, static_cast<int>(axis),
                                                       keep_dim);
@@ -135,22 +121,19 @@ TEST_CASE("Forward compare vs MLX for axis: sum max min mean", "[forward][ops][r
 }
 
 TEST_CASE("Axis sum and max reject invalid axes", "[forward][ops][reduce][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const float data[] = {1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F};
-    tensor a(data, {2, 3}, device);
-    tensor scalar(data, {}, device);
+    tensor a(data, {2, 3});
+    tensor scalar(data[0]);
 
-    REQUIRE_THROWS_AS(tensor::sum(a, -1, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::sum(a, 2, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::max(a, 5, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::min(a, 5, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::mean(a, 5, false, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sum(a, -1, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sum(a, 2, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::max(a, 5, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::min(a, 5, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mean(a, 5, false), std::runtime_error);
 
     // Rank-0 has no valid axis.
-    REQUIRE_THROWS_AS(tensor::sum(scalar, 0, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::max(scalar, 0, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::mean(scalar, 0, false, context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::min(scalar, 0, false, context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::sum(scalar, 0, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::max(scalar, 0, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mean(scalar, 0, false), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::min(scalar, 0, false), std::runtime_error);
 }

@@ -12,7 +12,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "comtam/core/context.h"
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "tests/support/forward_compare.h"
@@ -25,9 +24,6 @@ using comtam::tests::forward_compare::ValueMode;
 namespace mlx_test = comtam::tests::mlx_oracle;
 
 TEST_CASE("Forward compare vs MLX for matmul", "[forward][ops][matmul][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     struct MatmulCase {
         view_vector lhs_shape;
         view_vector rhs_shape;
@@ -36,11 +32,11 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][ops][matmul][mlx][meta
     // Contiguous operands select the tiled 16x16 path. Include non-square and
     // tile-boundary shapes so partial tiles differ across M/N/K.
     const MatmulCase matmul_case[] = {
-        {{20, 20}, {20, 20}},     // square, multi-tile with remainder
-        {{20, 1}, {1, 20}},       // skinny K
-        {{17, 19}, {19, 33}},     // non-square tile boundary (2x3 output tiles)
-        {{5, 13}, {13, 7}},       // non-square, fits in one partial tile
-        {{31, 17}, {17, 9}},      // non-square, 2x1 output tiles, multi-phase K
+        {{20, 20}, {20, 20}},  // square, multi-tile with remainder
+        {{20, 1}, {1, 20}},    // skinny K
+        {{17, 19}, {19, 33}},  // non-square tile boundary (2x3 output tiles)
+        {{5, 13}, {13, 7}},    // non-square, fits in one partial tile
+        {{31, 17}, {17, 9}},   // non-square, 2x1 output tiles, multi-phase K
     };
 
     for (const auto& shape : matmul_case) {
@@ -55,11 +51,11 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][ops][matmul][mlx][meta
         auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
         auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
 
-        tensor a(lhs.data(), shape.lhs_shape, device);
-        tensor b(rhs.data(), shape.rhs_shape, device);
+        tensor a(lhs.data(), shape.lhs_shape);
+        tensor b(rhs.data(), shape.rhs_shape);
 
         require_op_matches_oracle(
-            context, a.dtype(), expected_shape, [&]() { return tensor::matmul(a, b, context); },
+            a.dtype(), expected_shape, [&]() { return tensor::matmul(a, b); },
             [&]() { return mlx_test::matmul_float32(lhs, shape.lhs_shape, rhs, shape.rhs_shape); },
             ValueMode::Approximate);
     }
@@ -75,9 +71,6 @@ TEST_CASE("Forward compare vs MLX for matmul", "[forward][ops][matmul][mlx][meta
  */
 TEST_CASE("Forward compare vs MLX for matmul on non-contiguous inputs",
           "[forward][ops][matmul][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     // C = A @ B with A: [M, K], B: [K, N], C: [M, N]. Non-square shapes are
     // intentional: they catch stride bugs that a square [20,20] would hide.
     struct NonContiguousCase {
@@ -88,12 +81,12 @@ TEST_CASE("Forward compare vs MLX for matmul on non-contiguous inputs",
     };
 
     const NonContiguousCase cases[] = {
-        {{12, 20}, {20, 16}, true, false},   // only A non-contiguous
-        {{12, 20}, {20, 16}, false, true},   // only B non-contiguous
-        {{12, 20}, {20, 16}, true, true},    // both non-contiguous
-        {{7, 11}, {11, 5}, true, false},     // smaller non-square, A transposed
-        {{17, 19}, {19, 33}, false, true},   // tile-boundary non-square, B transposed
-        {{9, 23}, {23, 13}, true, true},     // another non-square, both transposed
+        {{12, 20}, {20, 16}, true, false},  // only A non-contiguous
+        {{12, 20}, {20, 16}, false, true},  // only B non-contiguous
+        {{12, 20}, {20, 16}, true, true},   // both non-contiguous
+        {{7, 11}, {11, 5}, true, false},    // smaller non-square, A transposed
+        {{17, 19}, {19, 33}, false, true},  // tile-boundary non-square, B transposed
+        {{9, 23}, {23, 13}, true, true},    // another non-square, both transposed
     };
 
     for (const auto& tc : cases) {
@@ -118,8 +111,8 @@ TEST_CASE("Forward compare vs MLX for matmul on non-contiguous inputs",
         auto b_base_data = utils::generate_random_array<float>(b_base_numel, 0.5F, 1.5F);
 
         // comtam: contiguous base tensors, then transpose as a free view op
-        tensor a_base(a_base_data.data(), a_base_shape, device);
-        tensor b_base(b_base_data.data(), b_base_shape, device);
+        tensor a_base(a_base_data.data(), a_base_shape);
+        tensor b_base(b_base_data.data(), b_base_shape);
         tensor a = tc.transpose_a ? a_base.transpose(0, 1) : a_base;
         tensor b = tc.transpose_b ? b_base.transpose(0, 1) : b_base;
 
@@ -135,17 +128,17 @@ TEST_CASE("Forward compare vs MLX for matmul on non-contiguous inputs",
         }
 
         // MLX oracle: build the same logical matrices as contiguous data
-        const auto a_equiv_data = tc.transpose_a
-            ? mlx_test::transpose_float32(a_base_data, a_base_shape, {1, 0})
-            : a_base_data;
-        const auto b_equiv_data = tc.transpose_b
-            ? mlx_test::transpose_float32(b_base_data, b_base_shape, {1, 0})
-            : b_base_data;
+        const auto a_equiv_data =
+            tc.transpose_a ? mlx_test::transpose_float32(a_base_data, a_base_shape, {1, 0})
+                           : a_base_data;
+        const auto b_equiv_data =
+            tc.transpose_b ? mlx_test::transpose_float32(b_base_data, b_base_shape, {1, 0})
+                           : b_base_data;
 
         const auto expected_shape = view_vector{M, N};
 
         require_op_matches_oracle(
-            context, a.dtype(), expected_shape, [&]() { return tensor::matmul(a, b, context); },
+            a.dtype(), expected_shape, [&]() { return tensor::matmul(a, b); },
             [&]() {
                 return mlx_test::matmul_float32(a_equiv_data, tc.a_shape, b_equiv_data, tc.b_shape);
             },

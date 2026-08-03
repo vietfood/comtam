@@ -23,7 +23,7 @@ enum class Op {
     MATMUL,
     // Reduce
     SUM,
-    MAX
+    MAX,
 };
 
 enum class OpVariant {

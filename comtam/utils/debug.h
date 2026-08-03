@@ -18,8 +18,8 @@
 #include <string>
 
 #include "comtam/core/command.h"
-#include "comtam/tensor/view.h"
 #include "comtam/macros/macros.h"
+#include "comtam/tensor/view.h"
 
 namespace comtam::utils {
 COMTAM_INLINE std::string format_arr4(const view_int arr[4]) {

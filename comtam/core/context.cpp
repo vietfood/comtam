@@ -19,7 +19,9 @@
 
 using namespace comtam::core;
 
-context::context() {
+runtime_state::runtime_state() {
     device_ = std::make_unique<metal_device>();
     kernels_ = std::make_unique<kernel_library>(device_->get(), COMTAM_KERNEL_DIR);
 }
+
+context::context() : state_(std::make_shared<runtime_state>()) {}

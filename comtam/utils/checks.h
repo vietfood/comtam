@@ -14,13 +14,14 @@
 
 #include <cstddef>
 
+#include "comtam/core/context.h"
 #include "comtam/macros/log.h"
 #include "comtam/macros/macros.h"
 #include "comtam/tensor/dtype.h"
 #include "comtam/tensor/view.h"
 #include "comtam/types.h"
 
-namespace comtam::checks {
+namespace comtam::utils {
 
 // Matches view_desc / Metal ViewInfo fixed rank encoding.
 constexpr size_int kMaxRank = 4;
@@ -43,6 +44,11 @@ COMTAM_INLINE void check_positive_extents(const view& v) {
 
 COMTAM_INLINE void check_same_dtype(DType a, DType b) {
     COMTAM_CHECK_AND_THROW(a == b, std::runtime_error, "Two operands must have the same dtype");
+}
+
+COMTAM_INLINE void check_same_runtime(const std::shared_ptr<core::runtime_state>& a,
+                                      const std::shared_ptr<core::runtime_state>& b) {
+    COMTAM_CHECK_AND_THROW(a == b, std::runtime_error, "Both tensors must have the same runtime");
 }
 
 COMTAM_INLINE void check_tensor_gpu_ready(const view& v, DType dtype) {
@@ -100,4 +106,4 @@ COMTAM_INLINE view_vector check_matmul(const view& a, DType a_dtype, const view&
                            "To do matmul, column of a must match with row of b");
     return {a.shape[0], b.shape[1]};
 }
-}  // namespace comtam::checks
+}  // namespace comtam::utils

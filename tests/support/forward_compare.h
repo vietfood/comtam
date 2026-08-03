@@ -26,8 +26,8 @@
 
 #include "comtam/core/context.h"
 #include "comtam/tensor/dtype.h"
-#include "comtam/tensor/view.h"
 #include "comtam/tensor/tensor.h"
+#include "comtam/tensor/view.h"
 
 namespace comtam::tests::forward_compare {
 
@@ -163,14 +163,13 @@ inline void require_values_close(const std::vector<T>& expected, const std::vect
 }
 
 template <typename T>
-inline void require_forward_matches(core::metal_device& device, const tensor& actual,
-                                    const view_vector& expected_shape,
+inline void require_forward_matches(const tensor& actual, const view_vector& expected_shape,
                                     const std::vector<T>& expected_values, ValueMode mode,
                                     float epsilon = kDefaultEpsilon) {
     require_shape_matches(actual, expected_shape);
     REQUIRE(expected_values.size() == numel_from_shape(expected_shape));
 
-    auto actual_values = actual.to_vector<T>(device);
+    auto actual_values = actual.to_vector<T>();
     if (mode == ValueMode::Exact) {
         require_values_exact<T>(expected_values, actual_values, expected_shape);
     } else {
@@ -179,14 +178,11 @@ inline void require_forward_matches(core::metal_device& device, const tensor& ac
 }
 
 template <typename ComtamFn, typename OracleFn>
-void require_op_matches_oracle(core::context& context, const DType& dtype,
-                               const view_vector& expected_shape, ComtamFn&& comtam_fn,
-                               OracleFn&& oracle_fn, ValueMode mode,
+void require_op_matches_oracle(const DType& dtype, const view_vector& expected_shape,
+                               ComtamFn&& comtam_fn, OracleFn&& oracle_fn, ValueMode mode,
                                float epsilon = kDefaultEpsilon) {
     COMTAM_DISPATCH_DTYPE(dtype, [&] {
-        auto& device = context.device();
-        require_forward_matches<scalar_t>(device, comtam_fn(), expected_shape, oracle_fn(), mode,
-                                          epsilon);
+        require_forward_matches<scalar_t>(comtam_fn(), expected_shape, oracle_fn(), mode, epsilon);
     });
 }
 
@@ -243,11 +239,10 @@ inline void require_values_close_abs_rel(const std::vector<float>& expected,
                                          double rel_eps, const view_vector& shape = {}) {
     REQUIRE(actual.size() == expected.size());
     for (size_t i = 0; i < expected.size(); ++i) {
-        const bool close =
-            Catch::Matchers::WithinAbs(static_cast<double>(expected[i]), abs_eps)
-                .match(static_cast<double>(actual[i])) ||
-            Catch::Matchers::WithinRel(static_cast<double>(expected[i]), rel_eps)
-                .match(static_cast<double>(actual[i]));
+        const bool close = Catch::Matchers::WithinAbs(static_cast<double>(expected[i]), abs_eps)
+                               .match(static_cast<double>(actual[i])) ||
+                           Catch::Matchers::WithinRel(static_cast<double>(expected[i]), rel_eps)
+                               .match(static_cast<double>(actual[i]));
         if (close) {
             continue;
         }
