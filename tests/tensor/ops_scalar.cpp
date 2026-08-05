@@ -13,7 +13,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <stdexcept>
 
-#include "comtam/core/context.h"
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "mlx/c/ops.h"
@@ -27,9 +26,6 @@ using comtam::tests::forward_compare::ValueMode;
 namespace mlx_test = comtam::tests::mlx_oracle;
 
 TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     struct ShapeCase {
         view_vector shape;
     };
@@ -50,13 +46,13 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
 
             const auto n = numel_from_shape(shape_case.shape);
             auto lhs = utils::generate_random_array<float>(n, 1.0F, 2.0F);
-            tensor a(lhs.data(), shape_case.shape, device);
+            tensor a(lhs.data(), shape_case.shape);
             const std::vector<float> rhs{scalar};
             const view_vector scalar_shape{};
 
             require_op_matches_oracle(
-                context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::add(a, tensor(scalar, device, a.dtype()), context); },
+                a.dtype(), shape_case.shape,
+                [&]() { return tensor::add(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_add);
@@ -64,8 +60,8 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 ValueMode::Approximate);
 
             require_op_matches_oracle(
-                context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::mul(a, tensor(scalar, device, a.dtype()), context); },
+                a.dtype(), shape_case.shape,
+                [&]() { return tensor::mul(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_multiply);
@@ -73,8 +69,8 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 ValueMode::Approximate);
 
             require_op_matches_oracle(
-                context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::sub(a, tensor(scalar, device, a.dtype()), context); },
+                a.dtype(), shape_case.shape,
+                [&]() { return tensor::sub(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_subtract);
@@ -82,8 +78,8 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 ValueMode::Approximate);
 
             require_op_matches_oracle(
-                context, a.dtype(), shape_case.shape,
-                [&]() { return tensor::div(a, tensor(scalar, device, a.dtype()), context); },
+                a.dtype(), shape_case.shape,
+                [&]() { return tensor::div(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
                                                     mlx_divide);
@@ -95,13 +91,10 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
 
 TEST_CASE("Scalar binary ops reject mismatched dtype and divide-by-zero",
           "[forward][ops][scalar][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const float data[] = {1.0F, 2.0F, 3.0F, 4.0F};
-    tensor a(data, {2, 2}, device);
+    tensor a(data, {2, 2});
 
-    REQUIRE_THROWS_AS(tensor::add(a, tensor(1, device, a.dtype()), context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::mul(a, tensor(2UL, device, a.dtype()), context), std::runtime_error);
-    REQUIRE_THROWS_AS(tensor::div(a, tensor(0.0, device, a.dtype()), context), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::add(a, tensor(1, a.dtype())), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::mul(a, tensor(2UL, a.dtype())), std::runtime_error);
+    REQUIRE_THROWS_AS(tensor::div(a, tensor(0.0, a.dtype())), std::runtime_error);
 }

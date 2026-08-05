@@ -30,12 +30,8 @@ struct ViewInfo {
  * input element. Output is assumed row-major over the non-reduced axes, which
  * matches how comtam constructs the contiguous output view.
  */
-inline int64_t physical_offset_axis(
-    uint out_index,
-    uint red_index,
-    int axis,
-    constant ViewInfo& view
-) {
+inline int64_t physical_offset_axis(uint out_index, uint red_index, int axis,
+                                    constant ViewInfo& view) {
     int64_t idx[4] = {0};
     int64_t tmp = static_cast<int64_t>(out_index);
 
@@ -63,10 +59,7 @@ inline int64_t physical_offset_axis(
     return res;
 }
 
-inline int64_t physical_offset(
-    uint linear_index,
-    constant ViewInfo& view
-) {
+inline int64_t physical_offset(uint linear_index, constant ViewInfo& view) {
     if (view.contiguous) {
         return static_cast<int64_t>(linear_index) + view.offset;
     }
@@ -75,7 +68,7 @@ inline int64_t physical_offset(
 
     /* calculation for non-contiguous view */
     int64_t tmp = static_cast<int64_t>(linear_index);
-    int64_t dec[4] {0};
+    int64_t dec[4]{0};
 
     for (int64_t i = 3; i >= 0; --i) {
         if (view.shape[i] == -1) {

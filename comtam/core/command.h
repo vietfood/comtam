@@ -11,8 +11,6 @@
 
 #pragma once
 
-#include <simd/vector_types.h>
-
 #include <string>
 
 #include "comtam/core/storage.h"

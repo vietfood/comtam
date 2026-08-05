@@ -25,7 +25,7 @@ namespace comtam::core {
 
 class kernel_library {
    public:
-    kernel_library(MTL::Device* device, std::filesystem::path kernel_dir);
+    explicit kernel_library(MTL::Device* device, const std::filesystem::path& kernel_dir);
 
     MTL::ComputePipelineState* get(const kernel_desc& kernel);
 

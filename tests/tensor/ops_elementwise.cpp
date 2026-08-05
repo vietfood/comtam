@@ -13,7 +13,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstring>
 
-#include "comtam/core/context.h"
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
 #include "mlx/c/ops.h"
@@ -27,12 +26,12 @@ namespace mlx_test = comtam::tests::mlx_oracle;
 
 struct UnaryOpCase {
     mlx_test::UnaryOp mlx_op;
-    tensor (*comtam_op)(const tensor&, core::context&);
+    tensor (*comtam_op)(const tensor&);
 };
 
 struct BinaryOpCase {
     mlx_test::BinaryOp mlx_op;
-    tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
+    tensor (*comtam_op)(const tensor&, const tensor&);
 };
 
 struct ShapeCase {
@@ -40,11 +39,7 @@ struct ShapeCase {
     size_t numel;
 };
 
-
 TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const UnaryOpCase cases[] = {
         {mlx_negative, tensor::neg},
         {mlx_reciprocal, tensor::recip},
@@ -62,10 +57,10 @@ TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") 
             auto shape = shape_case.shape;
 
             auto data = utils::generate_random_array<float>(shape_case.numel, 1.0F, 2.0F);
-            tensor a(data.data(), shape, device);
+            tensor a(data.data(), shape);
 
             require_op_matches_oracle(
-                context, a.dtype(), shape, [&]() { return op.comtam_op(a, context); },
+                a.dtype(), shape, [&]() { return op.comtam_op(a); },
                 [&]() { return mlx_test::unary_float32(data, shape, op.mlx_op); },
                 ValueMode::Approximate);
         }
@@ -79,9 +74,6 @@ TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") 
  */
 TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
           "[forward][ops][unary][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const UnaryOpCase cases[] = {
         {mlx_negative, tensor::neg},
         {mlx_reciprocal, tensor::recip},
@@ -93,7 +85,7 @@ TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
         const view_vector logical_shape{4, 3};
         auto base_data = utils::generate_random_array<float>(12, 1.0F, 2.0F);
 
-        tensor a_base(base_data.data(), base_shape, device);
+        tensor a_base(base_data.data(), base_shape);
         tensor a = a_base.transpose(0, 1);
         REQUIRE(a.shape() == logical_shape);
         REQUIRE(a.strides() == view_vector{1, 4});
@@ -103,7 +95,7 @@ TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
         for (const auto& op : cases) {
             CAPTURE(op.mlx_op);
             require_op_matches_oracle(
-                context, a.dtype(), logical_shape, [&]() { return op.comtam_op(a, context); },
+                a.dtype(), logical_shape, [&]() { return op.comtam_op(a); },
                 [&]() { return mlx_test::unary_float32(a_equiv, logical_shape, op.mlx_op); },
                 ValueMode::Approximate);
         }
@@ -115,19 +107,18 @@ TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
         const view_vector logical_shape{2, 2};
         auto base_data = utils::generate_random_array<float>(9, 1.0F, 2.0F);
 
-        tensor a_base(base_data.data(), base_shape, device);
+        tensor a_base(base_data.data(), base_shape);
         tensor a = a_base.shrink({{1, 3}, {1, 3}});
         REQUIRE(a.shape() == logical_shape);
         REQUIRE(a.offset() == 4);
         REQUIRE(a.strides() == view_vector{3, 1});
 
-        const auto a_equiv =
-            mlx_test::slice_float32(base_data, base_shape, {1, 1}, {3, 3}, {1, 1});
+        const auto a_equiv = mlx_test::slice_float32(base_data, base_shape, {1, 1}, {3, 3}, {1, 1});
 
         for (const auto& op : cases) {
             CAPTURE(op.mlx_op);
             require_op_matches_oracle(
-                context, a.dtype(), logical_shape, [&]() { return op.comtam_op(a, context); },
+                a.dtype(), logical_shape, [&]() { return op.comtam_op(a); },
                 [&]() { return mlx_test::unary_float32(a_equiv, logical_shape, op.mlx_op); },
                 ValueMode::Approximate);
         }
@@ -135,9 +126,6 @@ TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
 }
 
 TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][ops][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     const BinaryOpCase cases[] = {
         {mlx_add, tensor::add},
         {mlx_subtract, tensor::sub},
@@ -157,11 +145,11 @@ TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][ops][mlx][met
 
             auto lhs = utils::generate_random_array<float>(shape_case.numel, 1.0F, 2.0F);
             auto rhs = utils::generate_random_array<float>(shape_case.numel, 0.5F, 1.5F);
-            tensor a(lhs.data(), shape, device);
-            tensor b(rhs.data(), shape, device);
+            tensor a(lhs.data(), shape);
+            tensor b(rhs.data(), shape);
 
             require_op_matches_oracle(
-                context, a.dtype(), shape, [&]() { return op.comtam_op(a, b, context); },
+                a.dtype(), shape, [&]() { return op.comtam_op(a, b); },
                 [&]() { return mlx_test::binary_float32(lhs, shape, rhs, shape, op.mlx_op); },
                 ValueMode::Approximate);
         }

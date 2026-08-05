@@ -25,7 +25,7 @@ using namespace comtam::core;
 
 namespace fs = std::filesystem;
 
-kernel_library::kernel_library(MTL::Device* device, fs::path kernel_dir) : device_(device) {
+kernel_library::kernel_library(MTL::Device* device, const fs::path& kernel_dir) : device_(device) {
     COMTAM_CHECK_AND_THROW(fs::exists(kernel_dir) && fs::is_directory(kernel_dir),
                            std::runtime_error, "Directory does not exist");
 

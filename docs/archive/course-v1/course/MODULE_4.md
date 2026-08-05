@@ -8,7 +8,7 @@ autograd enters the picture.
 **Prerequisite:** Module 3's same-shape binary dispatch is covered by a CPU
 oracle. **Deliverables:** a CTest-only forward comparison helper, independent
 oracle coverage for Module 3 binary operations and Module 2 movement/readback,
-and a correctness map in `docs/solution/MODULE_4.md`. The helper compares shape
+and a correctness map in `docs/archive/course-v1/solution/MODULE_4.md`. The helper compares shape
 before values, uses exact equality for copies/movement and a stated epsilon for
 float arithmetic, and frees all oracle resources.
 
@@ -79,7 +79,7 @@ flat index, and values when a comparison fails; otherwise a stride failure is
 needlessly difficult to localize.
 
 The MLX C notes live in
-[`../note/MLX_C_ORACLE.md`](../note/MLX_C_ORACLE.md). The helper
+[`../note/MLX_C_ORACLE.md`](../../../note/MLX_C_ORACLE.md). The helper
 should stay under `tests/`, wired into CTest, and linked only into test targets.
 Keep it small.
 

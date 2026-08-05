@@ -35,7 +35,7 @@ surface implemented through Module 8.
 additional backends, broad dtype support, or a performance improvement. Those
 belong to the production track and must not be smuggled into this gate.
 
-**Completion evidence:** `docs/solution/MODULE_9.md` must distinguish build,
+**Completion evidence:** `docs/archive/course-v1/solution/MODULE_9.md` must distinguish build,
 unit/integration tests, full training, stress results, and any unrun checks.
 
 ## Assignment 9.1: Write The Supported-Semantics Matrix ⭐⭐

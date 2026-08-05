@@ -191,7 +191,8 @@ view_vector view::broadcast_shape(const view& lhs, const view& rhs) {
     view_vector small = (lhs.dim() >= rhs.dim()) ? rhs.shape : lhs.shape;
 
     const view_int ndim = static_cast<view_int>(big.size());
-    const view_int offset = ndim - static_cast<view_int>(small.size());  // small is left-padded with 1s
+    const view_int offset =
+        ndim - static_cast<view_int>(small.size());  // small is left-padded with 1s
 
     view_vector new_shape(static_cast<size_t>(ndim));
 
@@ -205,7 +206,7 @@ view_vector view::broadcast_shape(const view& lhs, const view& rhs) {
 
         if (a == 1 || b == 1) {
             new_shape[static_cast<size_t>(i)] = a * b;
-        } else { // a == b
+        } else {  // a == b
             new_shape[static_cast<size_t>(i)] = a;
         }
     }

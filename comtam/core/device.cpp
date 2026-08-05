@@ -223,8 +223,9 @@ void metal_device::submit_reduce(const command_desc& command, kernel_library& ke
             } else {
                 // One threadgroup per output element along the reduced axis.
                 COMTAM_ASSERT(command.extra.axis >= 0, "axis reduce requires a non-negative axis");
-                COMTAM_ASSERT(command.extra.axis < 4 && command.a.view.shape[command.extra.axis] > 0,
-                              "axis reduce axis is out of range or has zero extent");
+                COMTAM_ASSERT(
+                    command.extra.axis < 4 && command.a.view.shape[command.extra.axis] > 0,
+                    "axis reduce axis is out of range or has zero extent");
 
                 int32_t axis32 = static_cast<int32_t>(command.extra.axis);
                 encoder->setBytes(&axis32, sizeof(int32_t), 3);

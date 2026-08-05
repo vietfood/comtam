@@ -32,7 +32,7 @@ data augmentation, convolution, mixed precision, or distributed training.
 
 **Completion evidence:** record dataset identity/checksum or fixture source,
 seed, batch size, model dimensions, learning rate, epochs, final accuracy, timing,
-and memory/lifetime results in `docs/solution/MODULE_8.md`.
+and memory/lifetime results in `docs/archive/course-v1/solution/MODULE_8.md`.
 
 ## Target Representation Decision
 

@@ -39,7 +39,8 @@ COMTAM_INLINE std::string ns_error_message(NS::Error* error) {
     return description->utf8String();
 }
 
-/* a small read file util: https://stackoverflow.com/questions/6755111/read-input-files-fastest-way-possible */
+/* a small read file util:
+ * https://stackoverflow.com/questions/6755111/read-input-files-fastest-way-possible */
 COMTAM_INLINE std::string read_file(const std::string& path) {
     // Open in binary mode to avoid conversion overhead
     std::ifstream file(path, std::ios::binary | std::ios::ate);

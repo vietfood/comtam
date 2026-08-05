@@ -12,7 +12,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "comtam/core/context.h"
 #include "comtam/tensor/tensor.h"
 #include "comtam/tensor/view.h"
 #include "comtam/utils/rng.h"
@@ -27,12 +26,9 @@ namespace mlx_test = comtam::tests::mlx_oracle;
 
 TEST_CASE("Forward compare vs MLX for broadcast binary ops",
           "[forward][ops][broadcast][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     struct OpCase {
         mlx_test::BinaryOp mlx_op;
-        tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
+        tensor (*comtam_op)(const tensor&, const tensor&);
     };
 
     const OpCase op_cases[] = {
@@ -66,14 +62,14 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
 
             auto lhs = utils::generate_random_array<float>(lhs_numel, 1.0F, 2.0F);
             auto rhs = utils::generate_random_array<float>(rhs_numel, 0.5F, 1.5F);
-            tensor a(lhs.data(), broadcast_case.lhs_shape, device);
-            tensor b(rhs.data(), broadcast_case.rhs_shape, device);
+            tensor a(lhs.data(), broadcast_case.lhs_shape);
+            tensor b(rhs.data(), broadcast_case.rhs_shape);
 
             require_op_matches_oracle(
-                context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
+                a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, broadcast_case.lhs_shape, rhs,
-                                                              broadcast_case.rhs_shape, op.mlx_op);
+                                                    broadcast_case.rhs_shape, op.mlx_op);
                 },
                 ValueMode::Approximate);
         }
@@ -88,12 +84,9 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
  */
 TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inputs",
           "[forward][ops][broadcast][mlx][metal]") {
-    core::context context;
-    auto& device = context.device();
-
     struct OpCase {
         mlx_test::BinaryOp mlx_op;
-        tensor (*comtam_op)(const tensor&, const tensor&, core::context&);
+        tensor (*comtam_op)(const tensor&, const tensor&);
     };
 
     const OpCase op_cases[] = {
@@ -112,9 +105,9 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inp
     auto base_data = utils::generate_random_array<float>(numel_from_shape(base_shape), 1.0F, 2.0F);
     auto bias_data = utils::generate_random_array<float>(numel_from_shape(bias_shape), 0.5F, 1.5F);
 
-    tensor a_base(base_data.data(), base_shape, device);
+    tensor a_base(base_data.data(), base_shape);
     tensor a = a_base.transpose(0, 1);
-    tensor b(bias_data.data(), bias_shape, device);
+    tensor b(bias_data.data(), bias_shape);
 
     REQUIRE(a.shape() == logical_shape);
     // Contiguous (4, 3) would be strides (3, 1); transpose of (3, 4) is (1, 4).
@@ -126,7 +119,7 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inp
     for (const auto& op : op_cases) {
         CAPTURE(op.mlx_op);
         require_op_matches_oracle(
-            context, a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b, context); },
+            a.dtype(), expected_shape, [&]() { return op.comtam_op(a, b); },
             [&]() {
                 return mlx_test::binary_float32(a_equiv, logical_shape, bias_data, bias_shape,
                                                 op.mlx_op);

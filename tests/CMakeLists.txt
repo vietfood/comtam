@@ -14,6 +14,7 @@ set(COMTAM_TEST_SOURCES
   tensor/view.cpp
   tensor/checks.cpp
   tensor/tensor_api.cpp
+  tensor/identity.cpp
   tensor/ops_elementwise.cpp
   tensor/ops_broadcast.cpp
   tensor/ops_scalar.cpp
@@ -32,6 +33,11 @@ target_link_libraries(comtam_tests
     comtam_lib
     Catch2::Catch2WithMain
     mlxc
+)
+
+target_compile_definitions(comtam_tests
+  PRIVATE
+    COMTAM_BUILD_TESTS
 )
 
 target_compile_features(comtam_tests PRIVATE cxx_std_20)

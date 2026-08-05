@@ -19,6 +19,30 @@ TEST_CASE("Context creates a Metal device and kernel library", "[context][metal]
     REQUIRE(context.device().queue() != nullptr);
 }
 
+TEST_CASE("copied contexts share one runtime", "[context]") {
+    comtam::core::context a;
+    comtam::core::context b = a;
+
+    REQUIRE(a.shares_runtime_with(b));
+    REQUIRE(&a.device() == &b.device());
+    REQUIRE(&a.kernels() == &b.kernels());
+}
+
+TEST_CASE("separately constructed contexts are isolated", "[context]") {
+    comtam::core::context a;
+    comtam::core::context b;
+
+    REQUIRE_FALSE(a.shares_runtime_with(b));
+}
+
+TEST_CASE("default context is stable", "[context]") {
+    auto& a = comtam::core::default_context();
+    auto& b = comtam::core::default_context();
+
+    REQUIRE(&a == &b);
+    REQUIRE(a.shares_runtime_with(b));
+}
+
 TEST_CASE("Device should reject byte-count mismatches", "[device][metal]") {
     comtam::core::context context;
     REQUIRE(context.device().get() != nullptr);

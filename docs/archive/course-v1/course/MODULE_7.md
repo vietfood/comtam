@@ -39,7 +39,7 @@ optimizer checkpointing, parameter groups, schedulers, or automatic batching.
 
 **Completion evidence:** record the public API chosen, exact initialization
 seed, convergence thresholds, build command, and CTest command in
-`docs/solution/MODULE_7.md`.
+`docs/archive/course-v1/solution/MODULE_7.md`.
 
 ## Parameter Identity Rule
 
