@@ -19,9 +19,9 @@ By the end of the track, you should be able to explain and implement:
 
 | Chapter | Problem | Status |
 | --- | --- | --- |
-| [1. Runtime Ownership Before Autograd](01_RUNTIME_OWNERSHIP.md) | Where do clean tensor operations and future backward rules obtain Metal resources, and who keeps them alive? | Implementation complete; two direct context assertions pending |
-| [2. Tensor Identity And `tensor_impl`](02_TENSOR_IDENTITY.md) | How can `tensor b = a` preserve one gradient identity while movement creates a new identity that shares storage? | Passed in isolation; waits on Chapter 1 gate |
-| 3. Recording And `no_grad` | When does an eager operation attach a node, and how can recording suppression remain nested, thread-local, and runtime-specific? | Planned |
+| [1. Runtime Ownership Before Autograd](01_RUNTIME_OWNERSHIP.md) | Where do operations and future backward rules obtain Metal resources, and who keeps them alive? | Passed |
+| [2. Tensor Identity And `tensor_impl`](02_TENSOR_IDENTITY.md) | How can `tensor b = a` preserve one gradient identity while movement creates a new identity that shares storage? | Passed |
+| [3. Recording And `no_grad`](03_RECORDING_AND_NO_GRAD.md) | When does an eager operation record, and how does suppression stay nested, thread-local, and runtime-specific? | Ready to implement |
 | 4. Graph Ownership And `grad_fn` | How do heterogeneous backward rules retain parents and saved values without retaining their own outputs? | Planned |
 | 5. The Backward Engine | How does a DAG traverse once per identity, accumulate every edge, commit leaf gradients, and consume successfully? | Planned |
 | 6. Saved Values And Mutation | Which forward values must survive, and how does backward reject values changed after recording? | Planned |
@@ -31,12 +31,14 @@ By the end of the track, you should be able to explain and implement:
 
 ## How To Use This Track
 
-Read chapters sequentially because each one establishes an ownership or execution invariant used by the next. Implement only the checkpoint currently being studied; a broad autograd rewrite would make runtime, identity, graph, and derivative failures indistinguishable.
+Read chapters sequentially because each establishes an ownership or execution invariant the next one assumes. Implement only the checkpoint currently being studied; a broad autograd rewrite would make runtime, identity, graph, and derivative failures indistinguishable.
 
-Each chapter contains an implementation exercise rather than an implementation patch. Code sketches make types and ownership concrete, but you should type and adapt them while checking the current source. The chapter is successful only when you can explain why the implementation is shaped that way.
+Chapters 1 and 2 are retrospective - the mechanisms they describe are in the source, and they cite it by file and line rather than reproducing it. Read them for the reasoning, and read the code beside them. Chapter 3 onward is written before the implementation exists and carries an exercise.
+
+Chapters contain an implementation exercise rather than an implementation patch. Code sketches are deliberately partial - just enough to make a type or an ownership relation concrete. A chapter has done its job only when you can explain why the implementation is shaped that way.
 
 The compact accepted choices live in [`DECISIONS.md`](DECISIONS.md). Read that file as a reference after the relevant tutorial chapter explains a decision; it is not a substitute for the chapters.
 
 ## Prerequisite State
 
-The active source already has tested eager storage, views, semantic primitive dispatch, broadcasting, reductions, and matmul. The archived Modules 1-5A remain available under [`../../archive/course-v1/course/`](../../archive/course-v1/course/INDEX.md) when you want the historical path that produced those foundations.
+The active source already has tested eager storage, views, semantic primitive dispatch, broadcasting, reductions, and matmul. [`../../archive/COURSE_V1.md`](../../archive/COURSE_V1.md) records the retired module path that produced them.

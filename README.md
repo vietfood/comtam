@@ -9,8 +9,7 @@ You like PyTorch? You like [micrograd](https://github.com/karpathy/micrograd)?
 
 ## Why this plate exists
 
-Most "tiny" frameworks are either adorable toys or secretly warehouses.
-comtam aims at the awkward, delicious middle:
+Most "tiny" frameworks are either adorable toys or secretly warehouses. comtam aims at the awkward, delicious middle:
 
 | [micrograd](https://github.com/karpathy/micrograd) | comtam | PyTorch / MLX |
 | --- | --- | --- |
@@ -32,8 +31,8 @@ Design notes under [`docs/`](docs/): [`ARCHITECTURE.md`](docs/ARCHITECTURE.md), 
 ## Build
 
 You need:
-- Apple Silicon. 
-- CMake ≥ 3.24. 
+- Apple Silicon.
+- CMake ≥ 3.24.
 - An Xcode toolchain that still remembers what Metal is (if you don't have, please follow this [tutorial](https://developer.apple.com/documentation/xcode/downloading-and-installing-additional-xcode-components#Download-and-install-the-Metal-Toolchain)).
 
 ```sh
@@ -43,11 +42,10 @@ You need:
 
 ## Status
 
-The eager runtime foundations through broadcasting, reductions, matmul, and primitive-surface consolidation are complete. Their original module-oriented course and grading history are frozen under [`docs/archive/course-v1/`](docs/archive/course-v1/README.md).
+The eager runtime foundations through broadcasting, reductions, matmul, and primitive-surface consolidation are complete. The module-oriented course that produced them is retired; see [`docs/archive/COURSE_V1.md`](docs/archive/COURSE_V1.md).
 
-The active course now uses deep problem-driven chapters. The current track is [`Autograd`](docs/course/autograd/INDEX.md), beginning with [`Runtime Ownership Before Autograd`](docs/course/autograd/01_RUNTIME_OWNERSHIP.md) and [`Tensor Identity And tensor_impl`](docs/course/autograd/02_TENSOR_IDENTITY.md).
+The active course now uses deep problem-driven chapters. The current track is [`Autograd`](docs/course/autograd/INDEX.md). Runtime ownership and tensor identity are done and written up retrospectively; the live chapter is [`Recording And no_grad`](docs/course/autograd/03_RECORDING_AND_NO_GRAD.md).
 
 Future subjects such as neural-network modules, optimizers, sustained training, persistence, performance, and Python bindings will become their own multi-chapter tracks when the implementation reaches them.
 
-This is a learning kitchen that still wants to ship edible food. Bring an
-appetite for ownership. Leave the seventeen sauces at the door.
+This is a learning kitchen that still wants to ship edible food. Bring an appetite for ownership. Leave the seventeen sauces at the door.

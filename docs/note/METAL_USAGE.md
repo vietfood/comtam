@@ -1,12 +1,10 @@
 # Notes
 
-These are project notes for decisions that are important enough to remember but
-not yet stable enough to become architecture law.
+These are project notes for decisions that are important enough to remember but not yet stable enough to become architecture law.
 
 ## Metal-cpp ownership and errors
 
-Metal is Objective-C first. `metal-cpp` gives C++ syntax, but it does not turn
-Metal into ordinary C++ ownership.
+Metal is Objective-C first. `metal-cpp` gives C++ syntax, but it does not turn Metal into ordinary C++ ownership.
 
 The two rules to settle early:
 
@@ -17,12 +15,9 @@ The two rules to settle early:
 
 For `comtam`, setup and execution failures should throw C++ exceptions.
 
-Use `std::runtime_error` first. A custom `MetalError` can wait until ordinary
-exceptions become repetitive.
+Use `std::runtime_error` first. A custom `MetalError` can wait until ordinary exceptions become repetitive.
 
-This is fine because early `comtam` is not building a C API. If a Metal device
-cannot be created, a shader cannot compile, a pipeline cannot be built, or a
-command buffer fails, there is no useful local recovery yet.
+This is fine because early `comtam` is not building a C API. If a Metal device cannot be created, a shader cannot compile, a pipeline cannot be built, or a command buffer fails, there is no useful local recovery yet.
 
 Example:
 
@@ -77,9 +72,7 @@ if (command_buffer->status() == MTL::CommandBufferStatusError) {
 }
 ```
 
-Blocking with `waitUntilCompleted()` is acceptable while correctness is still
-being established. Async execution can wait until the synchronous path is
-stable.
+Blocking with `waitUntilCompleted()` is acceptable while correctness is still being established. Async execution can wait until the synchronous path is stable.
 
 ## Ownership policy
 
@@ -87,8 +80,7 @@ Use RAII for Objective-C objects.
 
 The metal-cpp ownership rule follows Cocoa:
 
-- names beginning with `alloc`, `new`, `copy`, `mutableCopy`, or `Create` return
-  objects you own
+- names beginning with `alloc`, `new`, `copy`, `mutableCopy`, or `Create` return objects you own
 - objects you own must eventually be released
 - objects you do not own must not be released
 - if you need to keep a borrowed object, retain it
@@ -105,11 +97,9 @@ NS::SharedPtr<MTL::CommandQueue> queue =
     NS::TransferPtr(device->newCommandQueue());
 ```
 
-Use `NS::RetainPtr(...)` only when keeping a borrowed object beyond the current
-scope.
+Use `NS::RetainPtr(...)` only when keeping a borrowed object beyond the current scope.
 
-Do not call `release()` manually in ordinary `comtam` code unless there is a
-specific reason. Manual release should be rare and localized.
+Do not call `release()` manually in ordinary `comtam` code unless there is a specific reason. Manual release should be rare and localized.
 
 ## Device skeleton
 
@@ -154,13 +144,11 @@ Device::Device() {
 }
 ```
 
-This is simpler than legrad's singleton manager while still respecting
-Objective-C ownership.
+This is simpler than legrad's singleton manager while still respecting Objective-C ownership.
 
 ## Autorelease pools
 
-Some Metal and Foundation methods return autoreleased objects. Without an
-autorelease pool, those objects can leak.
+Some Metal and Foundation methods return autoreleased objects. Without an autorelease pool, those objects can leak.
 
 In Objective-C, Apple's sample uses:
 
@@ -178,8 +166,7 @@ auto pool = NS::TransferPtr(NS::AutoreleasePool::alloc()->init());
 // Metal code
 ```
 
-Create an autorelease pool in `main`. If a future loop creates many temporary
-Foundation or Metal objects, create a smaller pool inside the loop.
+Create an autorelease pool in `main`. If a future loop creates many temporary Foundation or Metal objects, create a smaller pool inside the loop.
 
 ## Practical summary
 

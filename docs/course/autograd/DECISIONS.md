@@ -11,7 +11,11 @@ This file records the choices that chapters must explain and implementations mus
 | Runtime | Every `tensor_impl` owns shared runtime identity; construction may use a process-wide default | Chapter 1-2 |
 | Runtime isolation | Mixed-runtime operations reject before allocation or dispatch | Chapter 1-2 |
 | Constructor order | Tensor constructors use value/shape, then optional dtype, then optional context; selecting a context therefore spells the dtype | Chapter 2 |
+| `requires_grad` placement | A `bool` on `tensor_impl`; copies share it structurally, movement propagates it explicitly | Chapter 3 |
 | Recording | `no_grad` is lexical, nestable, thread-local, and runtime-specific | Chapter 3 |
+| Suppression storage | Thread-local depth counters keyed by `runtime_state`, held alive by the guard, erased at zero | Chapter 3 |
+| `max` gradients | Recording through `max` is rejected until a tie policy and gradient test exist | Chapter 3 |
+| `detach` | New `tensor_impl` over shared storage, view, dtype, and runtime, with no gradient requirement | Chapter 3 |
 | Graph placement | Differentiable results own producer nodes; there is no central tape | Chapter 4 |
 | Rule representation | Typed subclasses of a polymorphic `grad_fn` base | Chapter 4 |
 | Saved values | Detached runtime/dtype/view/storage snapshots with storage versions | Chapter 4 and 6 |

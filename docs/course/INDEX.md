@@ -27,7 +27,7 @@ The goal is not to make each assignment easy. The goal is to make every difficul
 
 | Track | Purpose | Status |
 | --- | --- | --- |
-| [`autograd/`](autograd/INDEX.md) | Runtime identity, tensor identity, graph ownership, backward execution, and gradient rules | Chapters 1-2 ready |
+| [`autograd/`](autograd/INDEX.md) | Runtime identity, tensor identity, graph ownership, backward execution, and gradient rules | Chapters 1-2 implemented; Chapter 3 ready |
 
 New subjects such as neural-network modules, optimizers, sustained training, persistence, performance, and Python bindings will become their own multi-chapter tracks when the implementation reaches them.
 
@@ -44,4 +44,4 @@ The course is living guidance. Verified code and tests may justify a better desi
 
 ## Historical Course
 
-The original module-oriented course and grading history are frozen under [`../archive/course-v1/`](../archive/course-v1/README.md). Use that archive for provenance and earlier exercises, not as a blocker against the active problem-driven course.
+The original module-oriented course is retired. [`../archive/COURSE_V1.md`](../archive/COURSE_V1.md) records what it covered and how to recover the files from git. It is provenance, not a blocker against the active course.
