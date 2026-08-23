@@ -1,9 +1,6 @@
 [submodule "vendor/metal/metal-cpp"]
 	path = vendor/metal/metal-cpp
 	url = https://github.com/apple/metal-cpp
-[submodule "refs/magnetron"]
-	path = refs/magnetron
-	url = https://github.com/MarioSieg/magnetron.git
 [submodule "vendor/Catch2"]
 	path = vendor/Catch2
 	url = https://github.com/catchorg/Catch2.git
@@ -13,9 +10,3 @@
 [submodule "vendor/fmt"]
 	path = vendor/fmt
 	url = https://github.com/fmtlib/fmt.git
-[submodule "refs/mlx"]
-	path = refs/mlx
-	url = https://github.com/ml-explore/mlx.git
-[submodule "refs/luminal"]
-	path = refs/luminal
-	url = https://github.com/luminal-ai/luminal.git
