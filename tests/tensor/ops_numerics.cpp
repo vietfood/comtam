@@ -17,7 +17,6 @@
 
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
-#include "mlx/c/ops.h"
 #include "tests/support/forward_compare.h"
 #include "tests/support/mlx_oracle.h"
 
@@ -76,7 +75,7 @@ TEST_CASE("recip follows IEEE float32 edges", "[forward][ops][numerics][metal]")
     tensor a(data.data(), shape);
     require_op_matches_oracle(
         a.dtype(), shape, [&]() { return tensor::recip(a); },
-        [&]() { return mlx_test::unary_float32(data, shape, mlx_reciprocal); },
+        [&]() { return mlx_test::unary_float32(data, shape, mlx_test::mx::reciprocal); },
         ValueMode::Approximate);
 }
 
@@ -127,13 +126,13 @@ TEST_CASE("finite recip and composed div stay within abs+rel tolerance vs MLX",
 
     {
         auto actual = tensor::recip(a).to_vector<float>();
-        auto expected = mlx_test::unary_float32(lhs, shape, mlx_reciprocal);
+        auto expected = mlx_test::unary_float32(lhs, shape, mlx_test::mx::reciprocal);
         require_values_close_abs_rel(expected, actual, kAbsEps, kRelEps, shape);
     }
 
     {
         auto actual = tensor::div(a, b).to_vector<float>();
-        auto expected = mlx_test::binary_float32(lhs, shape, rhs, shape, mlx_divide);
+        auto expected = mlx_test::binary_float32(lhs, shape, rhs, shape, mlx_test::mx::divide);
         // Public div is mul(a, recip(b)); allow the same single abs+rel budget vs MLX divide.
         require_values_close_abs_rel(expected, actual, kAbsEps, kRelEps, shape);
     }

@@ -15,7 +15,6 @@
 
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
-#include "mlx/c/ops.h"
 #include "tests/support/forward_compare.h"
 #include "tests/support/mlx_oracle.h"
 
@@ -41,8 +40,8 @@ struct ShapeCase {
 
 TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") {
     const UnaryOpCase cases[] = {
-        {mlx_negative, tensor::neg},
-        {mlx_reciprocal, tensor::recip},
+        {mlx_test::mx::negative, tensor::neg},
+        {mlx_test::mx::reciprocal, tensor::recip},
     };
 
     const ShapeCase shape_cases[] = {
@@ -75,8 +74,8 @@ TEST_CASE("Forward compare vs MLX for unary ops", "[forward][ops][mlx][metal]") 
 TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
           "[forward][ops][unary][mlx][metal]") {
     const UnaryOpCase cases[] = {
-        {mlx_negative, tensor::neg},
-        {mlx_reciprocal, tensor::recip},
+        {mlx_test::mx::negative, tensor::neg},
+        {mlx_test::mx::reciprocal, tensor::recip},
     };
 
     SECTION("transpose") {
@@ -127,10 +126,10 @@ TEST_CASE("Forward compare vs MLX for unary ops on non-contiguous inputs",
 
 TEST_CASE("Forward compare vs MLX for elementwise ops", "[forward][ops][mlx][metal]") {
     const BinaryOpCase cases[] = {
-        {mlx_add, tensor::add},
-        {mlx_subtract, tensor::sub},
-        {mlx_multiply, tensor::mul},
-        {mlx_divide, tensor::div},
+        {mlx_test::mx::add, tensor::add},
+        {mlx_test::mx::subtract, tensor::sub},
+        {mlx_test::mx::multiply, tensor::mul},
+        {mlx_test::mx::divide, tensor::div},
     };
 
     const ShapeCase shape_cases[] = {

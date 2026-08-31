@@ -32,7 +32,7 @@ target_link_libraries(comtam_tests
   PRIVATE
     comtam_lib
     Catch2::Catch2WithMain
-    mlxc
+    mlx
 )
 
 target_compile_definitions(comtam_tests

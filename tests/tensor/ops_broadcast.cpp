@@ -32,10 +32,10 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops",
     };
 
     const OpCase op_cases[] = {
-        {mlx_add, tensor::add},
-        {mlx_subtract, tensor::sub},
-        {mlx_multiply, tensor::mul},
-        {mlx_divide, tensor::div},
+        {mlx_test::mx::add, tensor::add},
+        {mlx_test::mx::subtract, tensor::sub},
+        {mlx_test::mx::multiply, tensor::mul},
+        {mlx_test::mx::divide, tensor::div},
     };
 
     struct BroadcastCase {
@@ -90,10 +90,10 @@ TEST_CASE("Forward compare vs MLX for broadcast binary ops on non-contiguous inp
     };
 
     const OpCase op_cases[] = {
-        {mlx_add, tensor::add},
-        {mlx_subtract, tensor::sub},
-        {mlx_multiply, tensor::mul},
-        {mlx_divide, tensor::div},
+        {mlx_test::mx::add, tensor::add},
+        {mlx_test::mx::subtract, tensor::sub},
+        {mlx_test::mx::multiply, tensor::mul},
+        {mlx_test::mx::divide, tensor::div},
     };
 
     // Logical: (4, 3) op (3,) -> (4, 3), with the (4, 3) operand coming from a

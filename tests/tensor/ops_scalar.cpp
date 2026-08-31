@@ -15,7 +15,6 @@
 
 #include "comtam/tensor/tensor.h"
 #include "comtam/utils/rng.h"
-#include "mlx/c/ops.h"
 #include "tests/support/forward_compare.h"
 #include "tests/support/mlx_oracle.h"
 
@@ -55,7 +54,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 [&]() { return tensor::add(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
-                                                    mlx_add);
+                                                    mlx_test::mx::add);
                 },
                 ValueMode::Approximate);
 
@@ -64,7 +63,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 [&]() { return tensor::mul(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
-                                                    mlx_multiply);
+                                                    mlx_test::mx::multiply);
                 },
                 ValueMode::Approximate);
 
@@ -73,7 +72,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 [&]() { return tensor::sub(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
-                                                    mlx_subtract);
+                                                    mlx_test::mx::subtract);
                 },
                 ValueMode::Approximate);
 
@@ -82,7 +81,7 @@ TEST_CASE("Forward compare vs MLX for scalar binary ops", "[forward][ops][scalar
                 [&]() { return tensor::div(a, tensor(scalar, a.dtype())); },
                 [&]() {
                     return mlx_test::binary_float32(lhs, shape_case.shape, rhs, scalar_shape,
-                                                    mlx_divide);
+                                                    mlx_test::mx::divide);
                 },
                 ValueMode::Approximate);
         }
