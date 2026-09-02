@@ -60,6 +60,14 @@ independent oracle with exact or tolerance-based comparisons.
 If Metal execution is unavailable, state what could and could not be verified;
 do not describe an unexecuted path as tested.
 
+## Project skills
+
+Reusable project procedures live under `.agents/skills/`. When a task touches
+Metal or metal-cpp host code, read
+`.agents/skills/comtam-metal/SKILL.md` before editing. Add future skills only
+for repeatable, project-specific work whose guidance changes engineering
+decisions; keep product contracts in source, tests, and contributor docs.
+
 ## Style
 
 - Match the existing C++ and Metal style.

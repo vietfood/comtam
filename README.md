@@ -22,7 +22,7 @@ The current implementation provides:
 
 The project deliberately does not target multiple devices, multiple backends,
 broad dtype coverage, Python bindings, serialization, or production serving.
-Autograd is designed but not implemented.
+Autograd is not implemented.
 
 ## Build
 
@@ -54,13 +54,9 @@ comtam/core/       Metal device, runtime, storage, and kernel dispatch
 comtam/tensor/     Tensor metadata, views, and eager operations
 comtam/kernels/    Metal compute kernels
 tests/             Catch2 tests with MLX numerical oracles
-docs/              Contributor-facing design and implementation notes
+.agents/skills/    Reusable agent procedures for project-specific work
 refs/              Vendored upstream samples retained for comparison
 ```
-
-See [`docs/AUTOGRAD_DESIGN.md`](docs/AUTOGRAD_DESIGN.md) for the accepted
-autograd direction and [`docs/note/METAL_USAGE.md`](docs/note/METAL_USAGE.md)
-for Metal ownership and error-handling conventions.
 
 ## Contributing
 
