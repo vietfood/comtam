@@ -1,12 +1,12 @@
 /*
 ** +--( ~_~ )-------------------------------------------------------------+
 ** | (c) 2026 Nguyen Le <lenguyen18072003@gmail.com>                       |
-** | Licensed under the Apache License, Version 2.0                        |
+** | Licensed under the MIT License                                        |
 ** | AI assist : Grok 4.5 (Cursor) and GPT 5.5 (Codex)                     |
 ** |                                                                       |
 ** | Website : https://lenguyen.vercel.app                                 |
 ** | GitHub  : https://github.com/vietfood/comtam                          |
-** | License : https://www.apache.org/licenses/LICENSE-2.0                 |
+** | License : https://opensource.org/license/mit                          |
 ** +--( ^_^ )-------------------------------------------------------------+
 */
 
